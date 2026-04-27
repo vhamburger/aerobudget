@@ -303,6 +303,25 @@ func main() {
 		w.WriteHeader(200)
 	})
 
+	r.Post("/api/csv-templates/{id}/set-default", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		tx, err := db.DB.Beginx()
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer tx.Rollback()
+
+		tx.Exec(`UPDATE csv_templates SET is_default = 0`)
+		tx.Exec(`UPDATE csv_templates SET is_default = 1 WHERE id = ?`, id)
+		
+		if err := tx.Commit(); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(200)
+	})
+
 	// --- IMPORT API ---
 	r.Post("/api/import/logbook", func(w http.ResponseWriter, r *http.Request) {
 		file, _, err := r.FormFile("file")
