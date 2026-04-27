@@ -19,8 +19,7 @@ COPY go.mod ./
 RUN go mod download
 COPY . .
 # We will build the Go binary here. CGO_ENABLED=0 for static binary if possible, 
-# but modernc.org/sqlite works without CGO. Let's use CGO_ENABLED=0 just in case.
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o aerobudget .
+RUN CGO_ENABLED=0 GOOS=linux go build -o aerobudget .
 
 # Final stage
 FROM alpine:latest
