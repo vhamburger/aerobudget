@@ -68,36 +68,6 @@ function Dashboard({ stats, flights }) {
   const trainingCosts = stats?.training_stats?.map(t => t.cost) ?? [];
   const trainingColors = trainingLabels.map(l => getColor(l));
 
-  // Minute price history per aircraft
-  const aircraftHistory = {};
-  const dates = [];
-  
-  flights?.filter(f => f.cost > 0 && f.flight_minutes > 0)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .forEach(f => {
-      if (!aircraftHistory[f.aircraft]) aircraftHistory[f.aircraft] = [];
-      if (!dates.includes(f.date)) dates.push(f.date);
-      aircraftHistory[f.aircraft].push({ date: f.date, price: f.cost / f.flight_minutes });
-    });
-
-  const historyDatasets = Object.keys(aircraftHistory).map(ac => {
-    // We need to map the history to the common dates array
-    const data = dates.map(d => {
-      const point = aircraftHistory[ac].find(p => p.date === d);
-      return point ? point.price : null;
-    });
-    return {
-      label: ac,
-      data: data,
-      borderColor: getColor(ac),
-      backgroundColor: getColor(ac),
-      tension: 0.3,
-      spanGaps: true,
-      borderWidth: 2,
-      pointRadius: 3
-    };
-  });
-
   return (
     <>
       <main className="dashboard-grid">
@@ -186,24 +156,6 @@ function Dashboard({ stats, flights }) {
             />
           ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
         </div>
-        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
-          <h2>Minutenpreis-Entwicklung pro Flugzeug</h2>
-          {historyDatasets.length > 0 ? (
-            <Line 
-              data={{ labels: dates.map(d => formatDate(d)), datasets: historyDatasets }}
-              options={{
-                responsive: true,
-                plugins: { legend: { position: 'bottom', labels: { color: 'var(--text-primary)' } } },
-                scales: {
-                  y: { 
-                    title: { display: true, text: '€ / Minute', color: 'var(--text-secondary)' },
-                    ticks: { callback: (val) => `${val.toFixed(2)} €` }
-                  }
-                }
-              }}
-            />
-          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Preisdaten verfügbar</p>}
-        </div>
       </main>
     </>
   );
@@ -217,7 +169,7 @@ function FlightTable({ flights }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
-              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten', '€/min'].map(h => (
+              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten'].map(h => (
                 <th key={h} style={{ padding: '12px', textAlign: 'left', color: 'var(--text-secondary)' }}>{h}</th>
               ))}
             </tr>
@@ -250,11 +202,6 @@ function FlightTable({ flights }) {
                     <span style={{ color: 'var(--text-secondary)' }}>—</span>
                   )}
                   {f.invoice_id && <FileText size={12} style={{ marginLeft: 6, opacity: 0.5 }} title="Rechnung verknüpft" />}
-                </td>
-                <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>
-                  {f.cost > 0 && f.flight_minutes > 0 ? (
-                    `${(f.cost / f.flight_minutes).toFixed(2)} €`
-                  ) : '—'}
                 </td>
               </tr>
             ))}
