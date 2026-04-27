@@ -281,6 +281,22 @@ func main() {
 		w.WriteHeader(201)
 	})
 
+	r.Put("/api/csv-templates/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		var t models.CSVTemplate
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			http.Error(w, "Invalid template data", 400)
+			return
+		}
+		_, err := db.DB.Exec(`UPDATE csv_templates SET name=?, delimiter=?, has_header=?, date_format=?, date_col=?, aircraft_col=?, departure_col=?, arrival_col=?, block_minutes_col=?, flight_minutes_col=?, pilot_col=?, training_type_col=?, flight_rule_col=?, is_default=? WHERE id=?`,
+			t.Name, t.Delimiter, t.HasHeader, t.DateFormat, t.DateCol, t.AircraftCol, t.DepartureCol, t.ArrivalCol, t.BlockMinutesCol, t.FlightMinutesCol, t.PilotCol, t.TrainingTypeCol, t.FlightRuleCol, t.IsDefault, id)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(200)
+	})
+
 	r.Delete("/api/csv-templates/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		db.DB.Exec(`DELETE FROM csv_templates WHERE id = ?`, id)

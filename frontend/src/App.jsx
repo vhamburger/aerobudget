@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2 } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 
@@ -360,27 +360,65 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Konfiguriere, wie CSV Spalten interpretiert werden.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              await fetch(`${API}/api/csv-templates`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTemplate) });
+              const isEdit = !!newTemplate.id;
+              const url = isEdit ? `${API}/api/csv-templates/${newTemplate.id}` : `${API}/api/csv-templates`;
+              const method = isEdit ? 'PUT' : 'POST';
+              
+              await fetch(url, { 
+                method, 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(newTemplate) 
+              });
+              
+              setNewTemplate({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
               loadData();
-            }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
-              <input placeholder="Name" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} className="input-field" />
-              <input placeholder="Separator" value={newTemplate.delimiter} onChange={e => setNewTemplate({...newTemplate, delimiter: e.target.value})} className="input-field" />
-              <input placeholder="Date Format (e.g. 02.01.2006)" value={newTemplate.date_format} onChange={e => setNewTemplate({...newTemplate, date_format: e.target.value})} className="input-field" />
-              <div style={{ fontSize: '0.8rem', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                {[['Date', 'date_col'], ['Aircraft', 'aircraft_col'], ['Dep', 'departure_col'], ['Arr', 'arrival_col'], ['Block', 'block_minutes_col'], ['Flight', 'flight_minutes_col'], ['Pilot', 'pilot_col'], ['Training', 'training_type_col'], ['Rule', 'flight_rule_col']].map(([label, key]) => (
+            }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px', background: 'rgba(128,128,128,0.05)', padding: '16px', borderRadius: '8px' }}>
+              <div>
+                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Profil Name</label>
+                <input placeholder="z.B. B4 Takeoff" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} className="input-field" style={{width:'100%'}} />
+              </div>
+              <div>
+                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Trennzeichen</label>
+                <input placeholder="z.B. ;" value={newTemplate.delimiter} onChange={e => setNewTemplate({...newTemplate, delimiter: e.target.value})} className="input-field" style={{width:'100%'}} />
+              </div>
+              <div>
+                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Datumsformat</label>
+                <input placeholder="02.01.2006" value={newTemplate.date_format} onChange={e => setNewTemplate({...newTemplate, date_format: e.target.value})} className="input-field" style={{width:'100%'}} />
+              </div>
+              
+              <div style={{ fontSize: '0.8rem', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '8px', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '12px' }}>
+                {[
+                  ['Datum', 'date_col'], 
+                  ['Flugzeug', 'aircraft_col'], 
+                  ['Startort', 'departure_col'], 
+                  ['Zielort', 'arrival_col'], 
+                  ['Blockzeit', 'block_minutes_col'], 
+                  ['Flugzeit', 'flight_minutes_col'], 
+                  ['Pilot (PIC)', 'pilot_col'], 
+                  ['Schulung', 'training_type_col'], 
+                  ['Regeln (IFR)', 'flight_rule_col']
+                ].map(([label, key]) => (
                   <div key={key}>
-                    <label style={{display:'block', marginBottom:4}}>{label} Col</label>
+                    <label style={{display:'block', marginBottom:4}}>{label} Spalte</label>
                     <input type="number" value={newTemplate[key]} onChange={e => setNewTemplate({...newTemplate, [key]: parseInt(e.target.value)})} className="input-field" style={{width:'100%'}} />
                   </div>
                 ))}
               </div>
-              <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white', gridColumn: '1 / -1' }}>Template Speichern</button>
+              
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white', flex: 1 }}>
+                  {newTemplate.id ? 'Template aktualisieren' : 'Template Speichern'}
+                </button>
+                {newTemplate.id && (
+                  <button type="button" onClick={() => setNewTemplate({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false })} className="nav-btn" style={{ background: 'rgba(128,128,128,0.2)' }}>Abbrechen</button>
+                )}
+              </div>
             </form>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)', textAlign: 'left' }}>
                   <th style={{ padding: '12px' }}>Name</th>
-                  <th style={{ padding: '12px' }}>Config (Date/Reg/Pilot)</th>
+                  <th style={{ padding: '12px' }}>Konfiguration (Spalten)</th>
                   <th style={{ padding: '12px' }}></th>
                 </tr>
               </thead>
@@ -391,10 +429,11 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                       <strong>{t.name}</strong> {t.is_default && <span style={{fontSize:'0.7rem', background:'#38bdf8', color:'white', padding:'2px 4px', borderRadius:4, marginLeft:4}}>DEFAULT</span>}
                     </td>
                     <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Cols: {t.date_col}, {t.aircraft_col}, {t.pilot_col} | Delim: '{t.delimiter}'
+                      Datum: {t.date_col} | Flugzeug: {t.aircraft_col} | PIC: {t.pilot_col} | Trenner: '{t.delimiter}'
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <button onClick={async () => { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+                    <td style={{ padding: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setNewTemplate(t)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }} title="Bearbeiten"><Edit2 size={16} /></button>
+                      <button onClick={async () => { if(confirm('Löschen?')) { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }} title="Löschen"><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
