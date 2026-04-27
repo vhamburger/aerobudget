@@ -546,11 +546,6 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="header" style={{ paddingTop: '40px', paddingBottom: '0px' }}>
-        <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
-        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>AerobBudget</p>
-      </header>
-
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
         <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
           <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
@@ -574,6 +569,11 @@ function App() {
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </nav>
+
+      <header className="header" style={{ marginBottom: '32px' }}>
+        <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
+        <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em' }}>AEROBUDGET</p>
+      </header>
 
       <div style={{ padding: '0 24px 24px' }}>
         {activeTab === 'dashboard' && <Dashboard stats={stats} />}

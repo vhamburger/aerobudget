@@ -134,3 +134,11 @@ table th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+.header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
