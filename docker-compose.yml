@@ -1,6 +1,6 @@
 services:
   aerobudget:
-    build: .
+    image: vhamburger/aerobudget:latest
     container_name: aerobudget
     ports:
       - "8011:8080"
