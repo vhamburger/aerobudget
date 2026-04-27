@@ -97,45 +97,52 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 		dateMatch := itemDateRe.FindString(line)
 
 		if regMatch != "" && dateMatch != "" {
-			// New Flight entry
 			item := PDFLineItem{
 				Date:                 dateMatch,
 				AircraftRegistration: regMatch,
 			}
 			
+			// Extraction logic: Prioritize keywords, fallback to last column
 			matches := amountsRe.FindAllStringSubmatch(line, -1)
 			var extractedPrices []float64
 			for _, m := range matches {
 				p := parseGermanAmount(m[1])
-				if p > 0 { extractedPrices = append(extractedPrices, p) }
+				if p > 0 && p < inv.TotalAmount { // Heuristic: Line items are usually smaller than total
+					extractedPrices = append(extractedPrices, p)
+				}
 			}
 
-			if len(extractedPrices) > 0 {
-				heuristic := "last_column"
-				if activeClub != nil && activeClub.Heuristic != "" {
-					heuristic = activeClub.Heuristic
-				}
-
-				if heuristic == "highest_value" {
-					for _, p := range extractedPrices { if p > item.Amount { item.Amount = p } }
-				} else if heuristic == "last_column" {
-					item.Amount = extractedPrices[len(extractedPrices)-1]
-				}
-				
-				// Special case: Fly Linz style (multiple columns in one row)
-				if activeClub != nil && activeClub.FlightAmountKeyword != "" && strings.Contains(line, activeClub.FlightAmountKeyword) {
-					// We can't easily map column by keyword if column structure is not fixed, 
-					// but usually it's [Flight, Landing, Approach]
-					if len(extractedPrices) >= 3 {
-						item.FlightCost = extractedPrices[0]
-						item.LandingFee = extractedPrices[1]
-						item.ApproachFee = extractedPrices[2]
-						item.Amount = item.FlightCost + item.LandingFee + item.ApproachFee
+			// Try to find specific categories via keywords
+			if activeClub != nil {
+				// 1. Flight Cost
+				if activeClub.FlightAmountKeyword != "" {
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					if m := re.FindStringSubmatch(line); len(m) > 1 {
+						item.FlightCost = parseGermanAmount(m[1])
 					}
-				} else {
-					item.FlightCost = item.Amount
+				}
+				// 2. Landing Fee (inline)
+				if activeClub.LandingFeeKeyword != "" {
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					if m := re.FindStringSubmatch(line); len(m) > 1 {
+						item.LandingFee = parseGermanAmount(m[1])
+					}
+				}
+				// 3. Approach Fee (inline)
+				if activeClub.ApproachFeeKeyword != "" {
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					if m := re.FindStringSubmatch(line); len(m) > 1 {
+						item.ApproachFee = parseGermanAmount(m[1])
+					}
 				}
 			}
+
+			// If nothing found via keywords, use the last number in the line
+			if item.FlightCost == 0 && len(extractedPrices) > 0 {
+				item.FlightCost = extractedPrices[len(extractedPrices)-1]
+			}
+			
+			item.Amount = item.FlightCost + item.LandingFee + item.ApproachFee
 
 			inv.LineItems = append(inv.LineItems, item)
 			lastItem = &inv.LineItems[len(inv.LineItems)-1]

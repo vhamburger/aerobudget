@@ -358,11 +358,8 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Heuristik (Betrags-Wahl)</label>
-                <select value={newClub.heuristic} onChange={e => setNewClub({ ...newClub, heuristic: e.target.value })} className="input-field" style={{ width: '100%' }}>
-                  <option value="highest_value">Höchster Wert</option>
-                  <option value="last_column">Letzte Spalte</option>
-                </select>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Heuristik</label>
+                <div style={{ padding: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Automatisch (Spalten/Keywords)</div>
               </div>
 
               <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
@@ -406,7 +403,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                       <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>PDF: {c.search_term || '—'}</span>
                     </td>
                     <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                      Heuristik: {c.heuristic}<br/>
+                      {c.flight_amount_keyword && `Flug: "${c.flight_amount_keyword}" `}
                       {c.landing_fee_keyword && `Ldg: "${c.landing_fee_keyword}" `}
                       {c.approach_fee_keyword && `ACG: "${c.approach_fee_keyword}"`}
                     </td>
