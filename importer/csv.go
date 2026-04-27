@@ -6,6 +6,7 @@ import (
 	"io"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aerobudget/aerobudget/models"
 )
@@ -88,11 +89,12 @@ func ParseCSV(reader io.Reader, tmpl CSVTemplate) ([]models.Flight, error) {
 		
 		if len(record) > tmpl.DateCol {
 			dateStr := strings.TrimSpace(record[tmpl.DateCol])
-			// Simple check to skip "Gesamt" or "Übertrag" rows by checking if it matches the DD.MM.YYYY format
-			if len(dateStr) != 10 || !strings.Contains(dateStr, ".") {
-				continue // Skip invalid rows
+			// Parse date using template's format and convert to ISO (YYYY-MM-DD) for correct SQLite sorting
+			parsed, err := time.Parse(tmpl.DateFormat, dateStr)
+			if err != nil {
+				continue // Skip rows with invalid/non-date values (e.g. "Gesamt", "Übertrag")
 			}
-			flight.Date = dateStr
+			flight.Date = parsed.Format("2006-01-02") // Store as YYYY-MM-DD
 		} else {
 			continue // No date column available
 		}
