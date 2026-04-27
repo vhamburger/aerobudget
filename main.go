@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/aerobudget/aerobudget/db"
+	"github.com/aerobudget/aerobudget/importer"
 	"github.com/aerobudget/aerobudget/watcher"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -22,7 +24,7 @@ func main() {
 	}
 
 	if err := db.InitDB(dbPath); err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Fehler beim Initialisieren der DB: %v", err)
 	}
 
 	r := chi.NewRouter()
@@ -61,10 +63,76 @@ func main() {
 		var req struct {
 			IDs []int `json:"ids"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Ungültige Anfrage", 400)
+			return
+		}
+		if len(req.IDs) == 0 {
+			w.WriteHeader(200)
+			return
+		}
 		query, args, _ := sqlx.In(`DELETE FROM flights WHERE id IN (?)`, req.IDs)
 		db.DB.Exec(db.DB.Rebind(query), args...)
 		w.WriteHeader(200)
+	})
+
+	// --- STATS API ---
+	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		// Explizite Typen mit beiden Tags verhindern Compiler-Fehler
+		type AircraftStat struct {
+			Aircraft string  `db:"aircraft" json:"aircraft"`
+			Minutes  int     `db:"minutes" json:"minutes"`
+			Cost     float64 `db:"cost" json:"cost"`
+		}
+		type MonthlyStat struct {
+			Month string  `db:"month" json:"month"`
+			Cost  float64 `db:"cost" json:"cost"`
+		}
+		type Stats struct {
+			TotalFlights       int            `json:"total_flights"`
+			TotalFlightMinutes int            `json:"total_flight_minutes"`
+			TotalCost          float64        `json:"total_cost"`
+			CostPerHour        float64        `json:"cost_per_hour"`
+			AircraftStats      []AircraftStat `json:"aircraft_stats"`
+			MonthlyCosts       []MonthlyStat  `json:"monthly_costs"`
+		}
+
+		var stats Stats
+		db.DB.QueryRowx(`SELECT COUNT(*), COALESCE(SUM(flight_minutes),0), COALESCE(SUM(cost),0) FROM flights`).
+			Scan(&stats.TotalFlights, &stats.TotalFlightMinutes, &stats.TotalCost)
+
+		if stats.TotalFlightMinutes > 0 {
+			stats.CostPerHour = stats.TotalCost / (float64(stats.TotalFlightMinutes) / 60.0)
+		}
+
+		// Aircraft Stats
+		rows, _ := db.DB.Queryx(`SELECT aircraft, SUM(flight_minutes) as minutes, SUM(cost) as cost FROM flights GROUP BY aircraft ORDER BY minutes DESC`)
+		if rows != nil {
+			defer rows.Close()
+			for rows.Next() {
+				var a AircraftStat
+				if err := rows.StructScan(&a); err != nil {
+					continue
+				}
+				stats.AircraftStats = append(stats.AircraftStats, a)
+			}
+		}
+
+		// Monthly Costs
+		rows2, _ := db.DB.Queryx(`SELECT strftime('%Y-%m', date) as month, SUM(cost) as cost FROM flights GROUP BY month ORDER BY month ASC`)
+		if rows2 != nil {
+			defer rows2.Close()
+			for rows2.Next() {
+				var m MonthlyStat
+				if err := rows2.StructScan(&m); err != nil {
+					continue
+				}
+				stats.MonthlyCosts = append(stats.MonthlyCosts, m)
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
 	})
 
 	// --- CLUBS API ---
@@ -84,7 +152,10 @@ func main() {
 			Name        string `json:"name"`
 			BillingType string `json:"billing_type"`
 		}
-		json.NewDecoder(r.Body).Decode(&club)
+		if err := json.NewDecoder(r.Body).Decode(&club); err != nil {
+			http.Error(w, "Invalid club data", 400)
+			return
+		}
 		_, err := db.DB.Exec(`INSERT INTO clubs (name, billing_type) VALUES (?, ?)`, club.Name, club.BillingType)
 		if err != nil {
 			http.Error(w, err.Error(), 400)
@@ -99,6 +170,32 @@ func main() {
 		w.WriteHeader(200)
 	})
 
+	// --- IMPORT API ---
+	r.Post("/api/import/logbook", func(w http.ResponseWriter, r *http.Request) {
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "Fehler beim Datei-Upload", 400)
+			return
+		}
+		defer file.Close()
+
+		flights, err := importer.ParseCSV(file, importer.B4TakeoffTemplate)
+		if err != nil {
+			http.Error(w, "Fehler beim Parsen der CSV: "+err.Error(), 500)
+			return
+		}
+
+		count := 0
+		for _, f := range flights {
+			_, err := db.DB.Exec(`INSERT INTO flights (date, aircraft, departure, arrival, block_minutes, flight_minutes, pilot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				f.Date, f.Aircraft, f.Departure, f.Arrival, f.BlockMinutes, f.FlightMinutes, f.Pilot)
+			if err == nil {
+				count++
+			}
+		}
+		w.Write([]byte(fmt.Sprintf("Erfolgreich %d Flüge importiert", count)))
+	})
+
 	// --- MATCHING / RECONCILE ---
 	r.Post("/api/reconcile", func(w http.ResponseWriter, r *http.Request) {
 		count, err := watcher.ReconcileMissingCosts()
@@ -110,16 +207,21 @@ func main() {
 		fmt.Fprintf(w, `{"matched": %d}`, count)
 	})
 
-	// --- STATS & IMPORT (gekürzt für Übersicht) ---
-	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
-		// ... (deine bestehende Stats-Logik)
+	// --- STATIC FILES (React SPA Support) ---
+	staticDir := "./frontend/dist"
+	fs := http.FileServer(http.Dir(staticDir))
+
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		path := filepath.Join(staticDir, r.URL.Path)
+		_, err := os.Stat(path)
+		if os.IsNotExist(err) || r.URL.Path == "/" {
+			http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+			return
+		}
+		fs.ServeHTTP(w, r)
 	})
 
-	r.Post("/api/import/logbook", func(w http.ResponseWriter, r *http.Request) {
-		// ... (deine bestehende Import-Logik)
-	})
-
-	// Background Watcher & Static Serve
+	// Background Watcher
 	watchDir := os.Getenv("INVOICE_WATCH_DIR")
 	if watchDir == "" {
 		watchDir = "data/invoices"
@@ -127,6 +229,10 @@ func main() {
 	os.MkdirAll(watchDir, 0755)
 	go watcher.Watch(watchDir)
 
-	http.Handle("/", http.FileServer(http.Dir("./frontend/dist")))
-	log.Fatal(http.ListenAndServe(":8080", r))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("Server gestartet auf Port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
 
@@ -64,7 +64,7 @@ function Dashboard({ stats }) {
               }}
               options={{ responsive: true, plugins: { legend: { display: false } } }}
             />
-          ) : <p>Keine Daten</p>}
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
         </div>
 
         <div className="glass-panel">
@@ -88,6 +88,47 @@ function Dashboard({ stats }) {
   );
 }
 
+function FlightTable({ flights }) {
+  return (
+    <div className="glass-panel">
+      <h2 style={{ marginBottom: 20 }}>Alle Flüge ({flights.length})</h2>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Kosten'].map(h => (
+                <th key={h} style={{ padding: '12px', textAlign: 'left', color: 'var(--text-secondary)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {flights.map(f => (
+              <tr key={f.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <td style={{ padding: '12px' }}>{formatDate(f.date)}</td>
+                <td style={{ padding: '12px' }}>
+                  <span style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 4, padding: '2px 8px' }}>{f.aircraft}</span>
+                </td>
+                <td style={{ padding: '12px' }}>{f.departure}</td>
+                <td style={{ padding: '12px' }}>{f.arrival}</td>
+                <td style={{ padding: '12px' }}>{formatMinutes(f.block_minutes)}</td>
+                <td style={{ padding: '12px' }}>{formatMinutes(f.flight_minutes)}</td>
+                <td style={{ padding: '12px' }}>
+                  {f.cost > 0 ? (
+                    <span style={{ color: '#4ade80' }}>{f.cost.toFixed(2)} €</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                  )}
+                  {f.invoice_id && <FileText size={12} style={{ marginLeft: 6, opacity: 0.5 }} title="Rechnung verknüpft" />}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
@@ -102,6 +143,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
 
   const addClub = async (e) => {
     e.preventDefault();
+    if (!newClub.name) return;
     await fetch(`${API}/api/clubs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -119,18 +161,18 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const triggerReconcile = async () => {
     const res = await fetch(`${API}/api/reconcile`, { method: 'POST' });
     const data = await res.json();
-    alert(`${data.matched} Flüge erfolgreich zugeordnet.`);
+    alert(`${data.matched} Flüge wurden erfolgreich Rechnungen zugeordnet.`);
   };
 
   return (
     <div className="dashboard-grid" style={{ gridTemplateColumns: '260px 1fr' }}>
       <div className="glass-panel" style={{ height: 'fit-content' }}>
-        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>SETTING MENU</h3>
+        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', letterSpacing: '0.05em' }}>EINSTELLUNGEN</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <button onClick={() => setSubTab('data')} className="nav-btn" style={{ background: subTab === 'data' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'data' ? '#38bdf8' : 'inherit' }}>
+          <button onClick={() => setSubTab('data')} className="nav-btn" style={{ background: subTab === 'data' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'data' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
             <Database size={14} style={{ marginRight: 8 }} /> Datenverwaltung
           </button>
-          <button onClick={() => setSubTab('clubs')} className="nav-btn" style={{ background: subTab === 'clubs' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'clubs' ? '#38bdf8' : 'inherit' }}>
+          <button onClick={() => setSubTab('clubs')} className="nav-btn" style={{ background: subTab === 'clubs' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'clubs' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
             <Building2 size={14} style={{ marginRight: 8 }} /> Vereine & Heuristik
           </button>
         </div>
@@ -139,7 +181,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
       <div className="glass-panel">
         {subTab === 'data' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2>Flüge verwalten</h2>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={triggerReconcile} className="nav-btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
@@ -198,13 +240,20 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
             </form>
 
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                  <th style={{ padding: '12px' }}>Name</th>
+                  <th style={{ padding: '12px' }}>Heuristik</th>
+                  <th style={{ padding: '12px' }}></th>
+                </tr>
+              </thead>
               <tbody>
                 {clubs.map(c => (
                   <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td style={{ padding: '12px' }}><strong>{c.name}</strong></td>
-                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>Heuristik: {c.billing_type}</td>
+                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{c.billing_type}</td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <button onClick={() => deleteClub(c.id)} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                      <button onClick={() => deleteClub(c.id)} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -217,6 +266,44 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   );
 }
 
+function ImportView({ onImported }) {
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setLoading(true);
+    setStatus('Importiere...');
+    const form = new FormData();
+    form.append('file', file);
+    try {
+      const res = await fetch(`${API}/api/import/logbook`, { method: 'POST', body: form });
+      const text = await res.text();
+      setStatus(text);
+      onImported();
+    } catch (err) {
+      setStatus('Fehler: ' + err.message);
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="glass-panel" style={{ textAlign: 'center', padding: '64px' }}>
+      <Upload size={48} style={{ color: '#38bdf8', marginBottom: 16 }} />
+      <h2>Logbuch importieren</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>CSV Datei hochladen</p>
+      <label style={{ cursor: 'pointer' }}>
+        <input type="file" accept=".csv" onChange={handleUpload} style={{ display: 'none' }} />
+        <span style={{ background: '#38bdf8', color: 'white', padding: '12px 24px', borderRadius: 8, fontWeight: 600 }}>
+          {loading ? 'Lädt...' : 'CSV auswählen'}
+        </span>
+      </label>
+      {status && <p style={{ marginTop: 20 }}>{status}</p>}
+    </div>
+  );
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
@@ -224,15 +311,19 @@ function App() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   async function loadData() {
-    const [s, f] = await Promise.all([fetch(`${API}/api/stats`), fetch(`${API}/api/flights`)]);
-    setStats(await s.json());
-    setFlights(await f.json());
+    try {
+      const [s, f] = await Promise.all([fetch(`${API}/api/stats`), fetch(`${API}/api/flights`)]);
+      setStats(await s.json());
+      setFlights(await f.json());
+    } catch (err) {
+      console.error("Laden fehlgeschlagen:", err);
+    }
   }
 
   useEffect(() => { loadData(); }, []);
 
   const batchDelete = async () => {
-    if (!confirm("Löschen?")) return;
+    if (!confirm(`${selectedIds.length} Flüge löschen?`)) return;
     await fetch(`${API}/api/flights/delete-batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -245,19 +336,24 @@ function App() {
   return (
     <div className="app-container">
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', padding: '12px 24px' }}>
-        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent' }}><BarChart3 size={16} /> Dashboard</button>
-        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent' }}><Plane size={16} /> Flüge</button>
-        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent' }}><Settings size={16} /> Einstellungen</button>
+        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'white' }}>
+          <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
+        </button>
+        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'white' }}>
+          <Plane size={16} style={{ marginRight: 8 }} /> Flüge
+        </button>
+        <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'white' }}>
+          <Upload size={16} style={{ marginRight: 8 }} /> Import
+        </button>
+        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'white' }}>
+          <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
+        </button>
       </nav>
 
-      <div style={{ padding: '0 24px' }}>
+      <div style={{ padding: '0 24px 24px' }}>
         {activeTab === 'dashboard' && <Dashboard stats={stats} />}
-        {activeTab === 'flights' && (
-          <div className="glass-panel">
-            <h2>Flüge</h2>
-            {/* Flugtabelle hier (analog zu deiner vorherigen Version) */}
-          </div>
-        )}
+        {activeTab === 'flights' && <FlightTable flights={flights} />}
+        {activeTab === 'import' && <ImportView onImported={loadData} />}
         {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} />}
       </div>
     </div>
