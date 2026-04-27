@@ -5,7 +5,6 @@ import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
-ChartJS.defaults.color = 'rgba(128,128,128,0.8)'; // Base color for scales
 ChartJS.defaults.font.family = "'Inter', sans-serif";
 
 
@@ -626,6 +625,7 @@ function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+    ChartJS.defaults.color = theme === 'dark' ? '#f8fafc' : '#0f172a';
   }, [theme]);
 
   async function loadData() {
