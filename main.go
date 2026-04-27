@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -40,6 +41,107 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 
+	r.Get("/api/flights", func(w http.ResponseWriter, r *http.Request) {
+		rows, err := db.DB.Queryx(`SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, pilot, cost FROM flights ORDER BY date DESC`)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer rows.Close()
+
+		type Flight struct {
+			ID            int     `db:"id" json:"id"`
+			Date          string  `db:"date" json:"date"`
+			Aircraft      string  `db:"aircraft" json:"aircraft"`
+			Departure     string  `db:"departure" json:"departure"`
+			Arrival       string  `db:"arrival" json:"arrival"`
+			BlockMinutes  int     `db:"block_minutes" json:"block_minutes"`
+			FlightMinutes int     `db:"flight_minutes" json:"flight_minutes"`
+			Pilot         string  `db:"pilot" json:"pilot"`
+			Cost          float64 `db:"cost" json:"cost"`
+		}
+
+		var flights []Flight
+		for rows.Next() {
+			var f Flight
+			if err := rows.StructScan(&f); err != nil {
+				continue
+			}
+			flights = append(flights, f)
+		}
+		if flights == nil {
+			flights = []Flight{}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.Encode(flights)
+	})
+
+	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		type Stats struct {
+			TotalFlights       int     `json:"total_flights"`
+			TotalFlightMinutes int     `json:"total_flight_minutes"`
+			TotalCost          float64 `json:"total_cost"`
+			CostPerHour        float64 `json:"cost_per_hour"`
+			AircraftStats      []struct {
+				Aircraft string  `json:"aircraft"`
+				Minutes  int     `json:"minutes"`
+				Cost     float64 `json:"cost"`
+			} `json:"aircraft_stats"`
+			MonthlyCosts []struct {
+				Month string  `json:"month"`
+				Cost  float64 `json:"cost"`
+			} `json:"monthly_costs"`
+		}
+
+		var stats Stats
+
+		db.DB.QueryRowx(`SELECT COUNT(*), COALESCE(SUM(flight_minutes),0), COALESCE(SUM(cost),0) FROM flights`).
+			Scan(&stats.TotalFlights, &stats.TotalFlightMinutes, &stats.TotalCost)
+
+		if stats.TotalFlightMinutes > 0 {
+			stats.CostPerHour = stats.TotalCost / (float64(stats.TotalFlightMinutes) / 60.0)
+		}
+
+		rows, _ := db.DB.Queryx(`SELECT aircraft, SUM(flight_minutes) as minutes, SUM(cost) as cost FROM flights GROUP BY aircraft ORDER BY minutes DESC`)
+		if rows != nil {
+			defer rows.Close()
+			for rows.Next() {
+				var a struct {
+					Aircraft string  `db:"aircraft"`
+					Minutes  int     `db:"minutes"`
+					Cost     float64 `db:"cost"`
+				}
+				rows.StructScan(&a)
+				stats.AircraftStats = append(stats.AircraftStats, struct {
+					Aircraft string  `json:"aircraft"`
+					Minutes  int     `json:"minutes"`
+					Cost     float64 `json:"cost"`
+				}{a.Aircraft, a.Minutes, a.Cost})
+			}
+		}
+
+		rows2, _ := db.DB.Queryx(`SELECT strftime('%Y-%m', date) as month, SUM(cost) as cost FROM flights GROUP BY month ORDER BY month ASC`)
+		if rows2 != nil {
+			defer rows2.Close()
+			for rows2.Next() {
+				var m struct {
+					Month string  `db:"month"`
+					Cost  float64 `db:"cost"`
+				}
+				rows2.StructScan(&m)
+				stats.MonthlyCosts = append(stats.MonthlyCosts, struct {
+					Month string  `json:"month"`
+					Cost  float64 `json:"cost"`
+				}{m.Month, m.Cost})
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(stats)
+	})
+
 	r.Post("/api/import/logbook", func(w http.ResponseWriter, r *http.Request) {
 		file, _, err := r.FormFile("file")
 		if err != nil {
@@ -75,7 +177,7 @@ func main() {
 		watchDir = "data/invoices"
 	}
 	os.MkdirAll(watchDir, 0755)
-	
+
 	go func() {
 		log.Printf("Starting background watcher on %s", watchDir)
 		err := watcher.Watch(watchDir)
