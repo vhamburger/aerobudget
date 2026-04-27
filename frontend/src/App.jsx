@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
-import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
+ChartJS.defaults.color = 'rgba(128,128,128,0.8)'; // Base color for scales
+ChartJS.defaults.font.family = "'Inter', sans-serif";
+
 
 const API = '';
 
@@ -32,11 +35,13 @@ function formatDate(isoDate) {
 }
 
 function getColor(str) {
+  const palette = ['#7b4b94', '#4b8f8c', '#c6ebbe', '#ffa5a5', '#beb2c8'];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     hash = str.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+  const idx = Math.abs(hash) % palette.length;
+  return palette[idx];
 }
 
 function Dashboard({ stats }) {
@@ -81,16 +86,25 @@ function Dashboard({ stats }) {
         <div className="glass-panel">
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
           {trainingLabels.length > 0 ? (
-            <Doughnut
+            <Pie
               data={{
                 labels: trainingLabels,
-                datasets: [{ data: trainingCosts, backgroundColor: trainingColors, borderWidth: 0 }]
+                datasets: [{ 
+                  data: trainingCosts, 
+                  backgroundColor: trainingColors, 
+                  borderWidth: 0,
+                  hoverOffset: 20
+                }]
               }}
               options={{
-                cutout: '70%',
                 plugins: {
-                  legend: { position: 'bottom', labels: { color: 'var(--text-primary)' } },
-                  tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toFixed(2)} €` } }
+                  legend: { 
+                    position: 'bottom', 
+                    labels: { color: 'var(--text-primary)', padding: 20 } 
+                  },
+                  tooltip: { 
+                    callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toFixed(2)} €` } 
+                  }
                 }
               }}
             />
@@ -107,7 +121,7 @@ function Dashboard({ stats }) {
             options={{
               cutout: '70%',
               plugins: {
-                legend: { position: 'bottom', labels: { color: 'var(--text-primary)' } },
+                legend: { position: 'bottom', labels: { color: 'var(--text-primary)', padding: 20 } },
                 tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${formatMinutes(ctx.parsed)}` } }
               }
             }}
