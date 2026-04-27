@@ -116,21 +116,21 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 			if activeClub != nil {
 				// 1. Flight Cost
 				if activeClub.FlightAmountKeyword != "" {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d.,]+)`)
 					if m := re.FindStringSubmatch(line); len(m) > 1 {
 						item.FlightCost = parseGermanAmount(m[1])
 					}
 				}
 				// 2. Landing Fee (inline)
 				if activeClub.LandingFeeKeyword != "" {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d.,]+)`)
 					if m := re.FindStringSubmatch(line); len(m) > 1 {
 						item.LandingFee = parseGermanAmount(m[1])
 					}
 				}
 				// 3. Approach Fee (inline)
 				if activeClub.ApproachFeeKeyword != "" {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d+(?:[.,]\d{2})]+)`)
+					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d.,]+)`)
 					if m := re.FindStringSubmatch(line); len(m) > 1 {
 						item.ApproachFee = parseGermanAmount(m[1])
 					}
