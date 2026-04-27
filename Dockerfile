@@ -19,7 +19,7 @@ COPY go.mod ./
 RUN go mod download
 COPY . .
 # We will build the Go binary here. CGO_ENABLED=0 for static binary if possible, 
-RUN CGO_ENABLED=1 GOOS=linux go build -o aerobudget .
+RUN CGO_ENABLED=0 GOOS=linux go build -o aerobudget .
 
 # Final stage
 FROM alpine:latest
