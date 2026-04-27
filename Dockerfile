@@ -5,7 +5,7 @@ WORKDIR /app/frontend
 # for now we'll just prepare the directory.
 # This stage might fail if frontend doesn't exist, so we'll just copy the whole project later
 COPY frontend/package*.json ./
-RUN if [ -f "package.json" ]; then npm install; fi
+RUN if [ -f "package.json" ]; then npm install --legacy-peer-deps; fi
 COPY frontend/ ./
 RUN if [ -f "package.json" ]; then npm run build; fi
 
