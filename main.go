@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/aerobudget/aerobudget/db"
 	"github.com/aerobudget/aerobudget/importer"
+	"github.com/aerobudget/aerobudget/models"
 	"github.com/aerobudget/aerobudget/watcher"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -46,11 +48,13 @@ func main() {
 			Arrival       string  `db:"arrival" json:"arrival"`
 			BlockMinutes  int     `db:"block_minutes" json:"block_minutes"`
 			FlightMinutes int     `db:"flight_minutes" json:"flight_minutes"`
+			TrainingType  string  `db:"training_type" json:"training_type"`
+			FlightRule    string  `db:"flight_rule" json:"flight_rule"`
 			Pilot         string  `db:"pilot" json:"pilot"`
 			Cost          float64 `db:"cost" json:"cost"`
 			InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
 		}
-		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, pilot, cost, invoice_id FROM flights ORDER BY date DESC`)
+		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot, cost, invoice_id FROM flights ORDER BY date DESC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -64,6 +68,8 @@ func main() {
 				Arrival       string  `db:"arrival" json:"arrival"`
 				BlockMinutes  int     `db:"block_minutes" json:"block_minutes"`
 				FlightMinutes int     `db:"flight_minutes" json:"flight_minutes"`
+				TrainingType  string  `db:"training_type" json:"training_type"`
+				FlightRule    string  `db:"flight_rule" json:"flight_rule"`
 				Pilot         string  `db:"pilot" json:"pilot"`
 				Cost          float64 `db:"cost" json:"cost"`
 				InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
@@ -92,7 +98,6 @@ func main() {
 
 	// --- STATS API ---
 	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {
-		// Explizite Typen mit beiden Tags verhindern Compiler-Fehler
 		type AircraftStat struct {
 			Aircraft string  `db:"aircraft" json:"aircraft"`
 			Minutes  int     `db:"minutes" json:"minutes"`
@@ -102,6 +107,11 @@ func main() {
 			Month string  `db:"month" json:"month"`
 			Cost  float64 `db:"cost" json:"cost"`
 		}
+		type TrainingStat struct {
+			Name  string  `json:"name"`
+			Cost  float64 `json:"cost"`
+			Hours float64 `json:"hours"`
+		}
 		type Stats struct {
 			TotalFlights       int            `json:"total_flights"`
 			TotalFlightMinutes int            `json:"total_flight_minutes"`
@@ -109,6 +119,7 @@ func main() {
 			CostPerHour        float64        `json:"cost_per_hour"`
 			AircraftStats      []AircraftStat `json:"aircraft_stats"`
 			MonthlyCosts       []MonthlyStat  `json:"monthly_costs"`
+			TrainingStats      []TrainingStat `json:"training_stats"`
 		}
 
 		var stats Stats
@@ -143,6 +154,24 @@ func main() {
 				}
 				stats.MonthlyCosts = append(stats.MonthlyCosts, m)
 			}
+		}
+
+		// Training Stats: for each training period, sum costs of training flights in that date range
+		var trainings []models.Training
+		db.DB.Select(&trainings, `SELECT id, name, start_date, end_date FROM trainings ORDER BY start_date ASC`)
+		for _, t := range trainings {
+			var cost float64
+			var minutes int
+			db.DB.QueryRowx(`
+				SELECT COALESCE(SUM(cost),0), COALESCE(SUM(flight_minutes),0) FROM flights 
+				WHERE date >= ? AND date <= ? 
+				AND training_type != '' AND training_type != 'Nein'`,
+				t.StartDate, t.EndDate).Scan(&cost, &minutes)
+			stats.TrainingStats = append(stats.TrainingStats, TrainingStat{
+				Name:  t.Name,
+				Cost:  cost,
+				Hours: float64(minutes) / 60.0,
+			})
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -191,6 +220,73 @@ func main() {
 		w.WriteHeader(200)
 	})
 
+	// --- TRAININGS API ---
+	r.Get("/api/trainings", func(w http.ResponseWriter, r *http.Request) {
+		var trainings []models.Training
+		db.DB.Select(&trainings, `SELECT id, name, start_date, end_date FROM trainings ORDER BY start_date ASC`)
+		if trainings == nil {
+			trainings = []models.Training{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(trainings)
+	})
+
+	r.Post("/api/trainings", func(w http.ResponseWriter, r *http.Request) {
+		var t struct {
+			Name      string `json:"name"`
+			StartDate string `json:"start_date"`
+			EndDate   string `json:"end_date"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			http.Error(w, "Invalid training data", 400)
+			return
+		}
+		_, err := db.DB.Exec(`INSERT INTO trainings (name, start_date, end_date) VALUES (?, ?, ?)`, t.Name, t.StartDate, t.EndDate)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(201)
+	})
+
+	r.Delete("/api/trainings/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		db.DB.Exec(`DELETE FROM trainings WHERE id = ?`, id)
+		w.WriteHeader(200)
+	})
+
+	// --- CSV TEMPLATES API ---
+	r.Get("/api/csv-templates", func(w http.ResponseWriter, r *http.Request) {
+		var templates []models.CSVTemplate
+		db.DB.Select(&templates, `SELECT id, name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default FROM csv_templates ORDER BY is_default DESC, name ASC`)
+		if templates == nil {
+			templates = []models.CSVTemplate{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(templates)
+	})
+
+	r.Post("/api/csv-templates", func(w http.ResponseWriter, r *http.Request) {
+		var t models.CSVTemplate
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			http.Error(w, "Invalid template data", 400)
+			return
+		}
+		_, err := db.DB.Exec(`INSERT INTO csv_templates (name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			t.Name, t.Delimiter, t.HasHeader, t.DateFormat, t.DateCol, t.AircraftCol, t.DepartureCol, t.ArrivalCol, t.BlockMinutesCol, t.FlightMinutesCol, t.PilotCol, t.TrainingTypeCol, t.FlightRuleCol, t.IsDefault)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(201)
+	})
+
+	r.Delete("/api/csv-templates/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		db.DB.Exec(`DELETE FROM csv_templates WHERE id = ?`, id)
+		w.WriteHeader(200)
+	})
+
 	// --- IMPORT API ---
 	r.Post("/api/import/logbook", func(w http.ResponseWriter, r *http.Request) {
 		file, _, err := r.FormFile("file")
@@ -200,7 +296,24 @@ func main() {
 		}
 		defer file.Close()
 
-		flights, err := importer.ParseCSV(file, importer.B4TakeoffTemplate)
+		// Get template ID from form
+		templateIDStr := r.FormValue("template_id")
+		var tmpl models.CSVTemplate
+
+		if templateIDStr != "" {
+			templateID, _ := strconv.Atoi(templateIDStr)
+			err = db.DB.Get(&tmpl, `SELECT id, name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default FROM csv_templates WHERE id = ?`, templateID)
+		}
+		if err != nil || templateIDStr == "" {
+			// Fallback: use default template
+			err = db.DB.Get(&tmpl, `SELECT id, name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default FROM csv_templates WHERE is_default = 1 LIMIT 1`)
+			if err != nil {
+				// Final fallback: B4 Takeoff hardcoded
+				tmpl = models.CSVTemplate{Delimiter: ";", HasHeader: true, DateFormat: "02.01.2006", DateCol: 0, AircraftCol: 1, DepartureCol: 4, ArrivalCol: 5, BlockMinutesCol: 6, FlightMinutesCol: 7, PilotCol: 3, TrainingTypeCol: 11, FlightRuleCol: 2}
+			}
+		}
+
+		flights, err := importer.ParseCSV(file, tmpl)
 		if err != nil {
 			http.Error(w, "Fehler beim Parsen der CSV: "+err.Error(), 500)
 			return
@@ -208,8 +321,8 @@ func main() {
 
 		count := 0
 		for _, f := range flights {
-			_, err := db.DB.Exec(`INSERT INTO flights (date, aircraft, departure, arrival, block_minutes, flight_minutes, pilot) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-				f.Date, f.Aircraft, f.Departure, f.Arrival, f.BlockMinutes, f.FlightMinutes, f.Pilot)
+			_, err := db.DB.Exec(`INSERT INTO flights (date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				f.Date, f.Aircraft, f.Departure, f.Arrival, f.BlockMinutes, f.FlightMinutes, f.TrainingType, f.FlightRule, f.Pilot)
 			if err == nil {
 				count++
 			}

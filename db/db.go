@@ -28,10 +28,33 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
-	// Apply embedded schema
+	// Apply embedded schema (CREATE TABLE IF NOT EXISTS - safe to re-run)
 	_, err = DB.Exec(schema)
 	if err != nil {
 		return err
+	}
+
+	// Run column migrations (ALTER TABLE ... ADD COLUMN - silently ignore if already exists)
+	migrations := []string{
+		`ALTER TABLE flights ADD COLUMN flight_rule TEXT DEFAULT 'VFR'`,
+		`ALTER TABLE flights ADD COLUMN training_type TEXT DEFAULT ''`,
+	}
+	for _, m := range migrations {
+		if _, err := DB.Exec(m); err != nil {
+			// SQLite returns an error if column already exists - that's fine
+			log.Printf("[DB] Migration skipped (already applied): %v", err)
+		}
+	}
+
+	// Seed default CSV templates if not yet present
+	var count int
+	DB.Get(&count, `SELECT COUNT(*) FROM csv_templates`)
+	if count == 0 {
+		log.Println("[DB] Seeding default CSV templates...")
+		DB.Exec(`INSERT INTO csv_templates (name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default)
+			VALUES ('B4 Takeoff', ';', 1, '02.01.2006', 0, 1, 4, 5, 6, 7, 3, 11, 2, 1)`)
+		DB.Exec(`INSERT INTO csv_templates (name, delimiter, has_header, date_format, date_col, aircraft_col, departure_col, arrival_col, block_minutes_col, flight_minutes_col, pilot_col, training_type_col, flight_rule_col, is_default)
+			VALUES ('Generic', ';', 1, '02.01.2006', 0, 1, 2, 3, 4, 5, 6, -1, -1, 0)`)
 	}
 
 	log.Println("Database initialized successfully.")

@@ -11,6 +11,7 @@ type Flight struct {
 	BlockMinutes  int       `json:"block_minutes" db:"block_minutes"`
 	FlightMinutes int       `json:"flight_minutes" db:"flight_minutes"`
 	TrainingType  string    `json:"training_type" db:"training_type"`
+	FlightRule    string    `json:"flight_rule" db:"flight_rule"`
 	Pilot         string    `json:"pilot" db:"pilot"`
 	Cost          float64   `json:"cost" db:"cost"`
 	InvoiceID     *int      `json:"invoice_id" db:"invoice_id"`
@@ -29,4 +30,29 @@ type Club struct {
 	ID          int    `json:"id" db:"id"`
 	Name        string `json:"name" db:"name"`
 	BillingType string `json:"billing_type" db:"billing_type"`
+}
+
+type Training struct {
+	ID        int    `json:"id" db:"id"`
+	Name      string `json:"name" db:"name"`
+	StartDate string `json:"start_date" db:"start_date"`
+	EndDate   string `json:"end_date" db:"end_date"`
+}
+
+type CSVTemplate struct {
+	ID               int    `json:"id" db:"id"`
+	Name             string `json:"name" db:"name"`
+	Delimiter        string `json:"delimiter" db:"delimiter"`
+	HasHeader        bool   `json:"has_header" db:"has_header"`
+	DateFormat       string `json:"date_format" db:"date_format"`
+	DateCol          int    `json:"date_col" db:"date_col"`
+	AircraftCol      int    `json:"aircraft_col" db:"aircraft_col"`
+	DepartureCol     int    `json:"departure_col" db:"departure_col"`
+	ArrivalCol       int    `json:"arrival_col" db:"arrival_col"`
+	BlockMinutesCol  int    `json:"block_minutes_col" db:"block_minutes_col"`
+	FlightMinutesCol int    `json:"flight_minutes_col" db:"flight_minutes_col"`
+	PilotCol         int    `json:"pilot_col" db:"pilot_col"`
+	TrainingTypeCol  int    `json:"training_type_col" db:"training_type_col"`
+	FlightRuleCol    int    `json:"flight_rule_col" db:"flight_rule_col"`
+	IsDefault        bool   `json:"is_default" db:"is_default"`
 }

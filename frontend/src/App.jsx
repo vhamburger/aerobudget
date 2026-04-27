@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
-import { Line, Doughnut } from 'react-chartjs-2';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
 const API = '';
+
+function useTheme() {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const stored = localStorage.getItem('theme');
+  const [theme, setTheme] = useState(stored || (prefersDark ? 'dark' : 'light'));
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  return [theme, setTheme];
+}
 
 function formatMinutes(mins) {
   const h = Math.floor(mins / 60);
@@ -24,6 +35,8 @@ function Dashboard({ stats }) {
   const costs = stats?.monthly_costs?.map(m => m.cost) ?? [];
   const aircraftLabels = stats?.aircraft_stats?.map(a => a.aircraft) ?? [];
   const aircraftMinutes = stats?.aircraft_stats?.map(a => a.minutes) ?? [];
+  const trainingLabels = stats?.training_stats?.map(t => t.name) ?? [];
+  const trainingCosts = stats?.training_stats?.map(t => t.cost) ?? [];
 
   return (
     <>
@@ -77,12 +90,25 @@ function Dashboard({ stats }) {
             options={{
               cutout: '70%',
               plugins: {
-                legend: { position: 'bottom', labels: { color: '#f8fafc' } },
+                legend: { position: 'bottom', labels: { color: 'var(--text-primary)' } },
                 tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${formatMinutes(ctx.parsed)}` } }
               }
             }}
           />
         </div>
+
+        {trainingLabels.length > 0 && (
+          <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
+            <Bar
+              data={{
+                labels: trainingLabels,
+                datasets: [{ label: 'Kosten (€)', data: trainingCosts, backgroundColor: ['#8b5cf6', '#f59e0b', '#10b981', '#38bdf8', '#f43f5e'], borderRadius: 6 }]
+              }}
+              options={{ responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }}
+            />
+          </div>
+        )}
       </main>
     </>
   );
@@ -95,15 +121,15 @@ function FlightTable({ flights }) {
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Kosten'].map(h => (
+            <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
+              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten'].map(h => (
                 <th key={h} style={{ padding: '12px', textAlign: 'left', color: 'var(--text-secondary)' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {flights.map(f => (
-              <tr key={f.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <tr key={f.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.07)' }}>
                 <td style={{ padding: '12px' }}>{formatDate(f.date)}</td>
                 <td style={{ padding: '12px' }}>
                   <span style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 4, padding: '2px 8px' }}>{f.aircraft}</span>
@@ -112,6 +138,16 @@ function FlightTable({ flights }) {
                 <td style={{ padding: '12px' }}>{f.arrival}</td>
                 <td style={{ padding: '12px' }}>{formatMinutes(f.block_minutes)}</td>
                 <td style={{ padding: '12px' }}>{formatMinutes(f.flight_minutes)}</td>
+                <td style={{ padding: '12px' }}>
+                  <span style={{ background: f.flight_rule === 'IFR' ? 'rgba(139,92,246,0.2)' : 'rgba(16,185,129,0.15)', color: f.flight_rule === 'IFR' ? '#a78bfa' : '#34d399', borderRadius: 4, padding: '2px 6px', fontSize: '0.8rem' }}>
+                    {f.flight_rule || 'VFR'}
+                  </span>
+                </td>
+                <td style={{ padding: '12px' }}>
+                  {f.training_type && f.training_type !== 'Nein' && f.training_type !== '' ? (
+                    <span style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24', borderRadius: 4, padding: '2px 6px', fontSize: '0.8rem' }}>{f.training_type}</span>
+                  ) : <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>—</span>}
+                </td>
                 <td style={{ padding: '12px' }}>
                   {f.cost > 0 ? (
                     <span style={{ color: '#4ade80' }}>{f.cost.toFixed(2)} €</span>
@@ -133,13 +169,23 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
   const [newClub, setNewClub] = useState({ name: '', billing_type: 'highest_value' });
+  const [trainings, setTrainings] = useState([]);
+  const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
+  const [templates, setTemplates] = useState([]);
+  const [newTemplate, setNewTemplate] = useState({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
 
-  const loadClubs = async () => {
-    const res = await fetch(`${API}/api/clubs`);
-    setClubs(await res.json());
+  const loadData = async () => {
+    const [c, t, tmpl] = await Promise.all([
+      fetch(`${API}/api/clubs`),
+      fetch(`${API}/api/trainings`),
+      fetch(`${API}/api/csv-templates`)
+    ]);
+    setClubs(await c.json());
+    setTrainings(await t.json());
+    setTemplates(await tmpl.json());
   };
 
-  useEffect(() => { loadClubs(); }, []);
+  useEffect(() => { loadData(); }, []);
 
   const addClub = async (e) => {
     e.preventDefault();
@@ -174,6 +220,12 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
           </button>
           <button onClick={() => setSubTab('clubs')} className="nav-btn" style={{ background: subTab === 'clubs' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'clubs' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
             <Building2 size={14} style={{ marginRight: 8 }} /> Vereine & Heuristik
+          </button>
+          <button onClick={() => setSubTab('trainings')} className="nav-btn" style={{ background: subTab === 'trainings' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'trainings' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
+            <GraduationCap size={14} style={{ marginRight: 8 }} /> Ausbildungen
+          </button>
+          <button onClick={() => setSubTab('templates')} className="nav-btn" style={{ background: subTab === 'templates' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'templates' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
+            <FileSpreadsheet size={14} style={{ marginRight: 8 }} /> CSV Import Formate
           </button>
         </div>
       </div>
@@ -261,6 +313,95 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
             </table>
           </div>
         )}
+
+        {subTab === 'trainings' && (
+          <div>
+            <h2>Ausbildungen verwalten</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Definiere Zeiträume für PPL, IFR etc. Kosten werden automatisch zugeordnet.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              await fetch(`${API}/api/trainings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTraining) });
+              setNewTraining({ name: '', start_date: '', end_date: '' });
+              loadData();
+            }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', marginBottom: '24px' }}>
+              <input placeholder="Name (z.B. PPL)" value={newTraining.name} onChange={e => setNewTraining({...newTraining, name: e.target.value})} className="input-field" />
+              <input type="date" value={newTraining.start_date} onChange={e => setNewTraining({...newTraining, start_date: e.target.value})} className="input-field" />
+              <input type="date" value={newTraining.end_date} onChange={e => setNewTraining({...newTraining, end_date: e.target.value})} className="input-field" />
+              <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white' }}>Hinzufügen</button>
+            </form>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)', textAlign: 'left' }}>
+                  <th style={{ padding: '12px' }}>Name</th>
+                  <th style={{ padding: '12px' }}>Start</th>
+                  <th style={{ padding: '12px' }}>Ende</th>
+                  <th style={{ padding: '12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {trainings.map(t => (
+                  <tr key={t.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
+                    <td style={{ padding: '12px' }}><strong>{t.name}</strong></td>
+                    <td style={{ padding: '12px' }}>{formatDate(t.start_date)}</td>
+                    <td style={{ padding: '12px' }}>{formatDate(t.end_date)}</td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <button onClick={async () => { await fetch(`${API}/api/trainings/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {subTab === 'templates' && (
+          <div>
+            <h2>CSV Import Formate</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Konfiguriere, wie CSV Spalten interpretiert werden.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              await fetch(`${API}/api/csv-templates`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTemplate) });
+              loadData();
+            }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+              <input placeholder="Name" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} className="input-field" />
+              <input placeholder="Separator" value={newTemplate.delimiter} onChange={e => setNewTemplate({...newTemplate, delimiter: e.target.value})} className="input-field" />
+              <input placeholder="Date Format (e.g. 02.01.2006)" value={newTemplate.date_format} onChange={e => setNewTemplate({...newTemplate, date_format: e.target.value})} className="input-field" />
+              <div style={{ fontSize: '0.8rem', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {[['Date', 'date_col'], ['Aircraft', 'aircraft_col'], ['Dep', 'departure_col'], ['Arr', 'arrival_col'], ['Block', 'block_minutes_col'], ['Flight', 'flight_minutes_col'], ['Pilot', 'pilot_col'], ['Training', 'training_type_col'], ['Rule', 'flight_rule_col']].map(([label, key]) => (
+                  <div key={key}>
+                    <label style={{display:'block', marginBottom:4}}>{label} Col</label>
+                    <input type="number" value={newTemplate[key]} onChange={e => setNewTemplate({...newTemplate, [key]: parseInt(e.target.value)})} className="input-field" style={{width:'100%'}} />
+                  </div>
+                ))}
+              </div>
+              <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white', gridColumn: '1 / -1' }}>Template Speichern</button>
+            </form>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)', textAlign: 'left' }}>
+                  <th style={{ padding: '12px' }}>Name</th>
+                  <th style={{ padding: '12px' }}>Config (Date/Reg/Pilot)</th>
+                  <th style={{ padding: '12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map(t => (
+                  <tr key={t.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
+                    <td style={{ padding: '12px' }}>
+                      <strong>{t.name}</strong> {t.is_default && <span style={{fontSize:'0.7rem', background:'#38bdf8', color:'white', padding:'2px 4px', borderRadius:4, marginLeft:4}}>DEFAULT</span>}
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Cols: {t.date_col}, {t.aircraft_col}, {t.pilot_col} | Delim: '{t.delimiter}'
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                      <button onClick={async () => { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -269,6 +410,17 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
 function ImportView({ onImported }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
+
+  useEffect(() => {
+    fetch(`${API}/api/csv-templates`).then(res => res.json()).then(data => {
+      setTemplates(data);
+      const def = data.find(t => t.is_default);
+      if (def) setSelectedTemplate(def.id);
+      else if (data.length > 0) setSelectedTemplate(data[0].id);
+    });
+  }, []);
 
   async function handleUpload(e) {
     const file = e.target.files[0];
@@ -277,6 +429,7 @@ function ImportView({ onImported }) {
     setStatus('Importiere...');
     const form = new FormData();
     form.append('file', file);
+    form.append('template_id', selectedTemplate);
     try {
       const res = await fetch(`${API}/api/import/logbook`, { method: 'POST', body: form });
       const text = await res.text();
@@ -292,7 +445,20 @@ function ImportView({ onImported }) {
     <div className="glass-panel" style={{ textAlign: 'center', padding: '64px' }}>
       <Upload size={48} style={{ color: '#38bdf8', marginBottom: 16 }} />
       <h2>Logbuch importieren</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>CSV Datei hochladen</p>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Wähle ein Format und lade deine CSV Datei hoch</p>
+      
+      <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
+        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Format:</span>
+        <select 
+          value={selectedTemplate} 
+          onChange={e => setSelectedTemplate(e.target.value)}
+          className="input-field"
+          style={{ width: '200px' }}
+        >
+          {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </div>
+
       <label style={{ cursor: 'pointer' }}>
         <input type="file" accept=".csv" onChange={handleUpload} style={{ display: 'none' }} />
         <span style={{ background: '#38bdf8', color: 'white', padding: '12px 24px', borderRadius: 8, fontWeight: 600 }}>
@@ -309,6 +475,12 @@ function App() {
   const [stats, setStats] = useState(null);
   const [flights, setFlights] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   async function loadData() {
     try {
@@ -335,18 +507,27 @@ function App() {
 
   return (
     <div className="app-container">
-      <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', padding: '12px 24px' }}>
-        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'white' }}>
+      <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
+        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
           <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
         </button>
-        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'white' }}>
+        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Plane size={16} style={{ marginRight: 8 }} /> Flüge
         </button>
-        <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'white' }}>
+        <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Upload size={16} style={{ marginRight: 8 }} /> Import
         </button>
-        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'white' }}>
+        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
+        </button>
+        <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
+        <button 
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+          className="nav-btn" 
+          title="Thema wechseln"
+          style={{ padding: '8px' }}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
       </nav>
 
