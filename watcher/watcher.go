@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -152,26 +153,22 @@ func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID 
 // ReconcileMissingCosts für den manuellen Abgleich
 func ReconcileMissingCosts() (int, error) {
 	log.Println("[Matcher] Reconcile wird ausgeführt...")
-	type Unmatched struct {
-		ID       int     `db:"id"`
-		Date     string  `db:"date"`
-		Amount   float64 `db:"amount"`
-		Aircraft string  `db:"aircraft"`
+
+	watchDir := os.Getenv("INVOICE_WATCH_DIR")
+	if watchDir == "" {
+		watchDir = "data/invoices"
 	}
-	var unmatched []Unmatched
-	err := db.DB.Select(&unmatched, `
-		SELECT id, date, amount, aircraft FROM invoices 
-		WHERE id NOT IN (SELECT invoice_id FROM flights WHERE invoice_id IS NOT NULL)
-	`)
+
+	files, err := filepath.Glob(filepath.Join(watchDir, "*.pdf"))
 	if err != nil {
 		return 0, err
 	}
+
 	count := 0
-	for _, inv := range unmatched {
-		err := MatchInvoiceToFlight(inv.Date, inv.Aircraft, inv.Amount, inv.ID)
-		if err == nil {
-			count++
-		}
+	for _, file := range files {
+		processNewInvoice(file)
+		count++ // just returning the number of processed invoices for now
 	}
+
 	return count, nil
 }
