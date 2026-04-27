@@ -34,6 +34,14 @@ function formatDate(isoDate) {
   return `${d}.${m}.${y}`;
 }
 
+function formatNumber(val, decimals = 0) {
+  return new Intl.NumberFormat('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(val);
+}
+
+function formatCurrency(val) {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
+}
+
 function getColor(str) {
   const palette = ['#7b4b94', '#4b8f8c', '#c6ebbe', '#ffa5a5', '#beb2c8'];
   let hash = 0;
@@ -75,11 +83,11 @@ function Dashboard({ stats }) {
           </div>
           <div style={{ flex: 1, minWidth: '140px' }}>
             <div className="stat-label"><Euro size={14} style={{ display: 'inline', marginRight: 4 }} />Kosten</div>
-            <div className="stat-value">{(stats?.total_cost ?? 0).toFixed(2)} €</div>
+            <div className="stat-value">{formatCurrency(stats?.total_cost ?? 0)}</div>
           </div>
           <div style={{ flex: 1, minWidth: '140px' }}>
             <div className="stat-label"><TrendingUp size={14} style={{ display: 'inline', marginRight: 4 }} />Ø / h</div>
-            <div className="stat-value">{(stats?.cost_per_hour ?? 0).toFixed(0)} €</div>
+            <div className="stat-value">{formatNumber(stats?.cost_per_hour ?? 0)} €</div>
           </div>
         </div>
 
@@ -103,7 +111,7 @@ function Dashboard({ stats }) {
                     labels: { color: 'var(--text-primary)', padding: 20 } 
                   },
                   tooltip: { 
-                    callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toFixed(2)} €` } 
+                    callbacks: { label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.parsed)}` } 
                   }
                 }
               }}
@@ -190,7 +198,7 @@ function FlightTable({ flights }) {
                 </td>
                 <td style={{ padding: '12px' }}>
                   {f.cost > 0 ? (
-                    <span style={{ color: '#4ade80' }}>{f.cost.toFixed(2)} €</span>
+                    <span style={{ color: '#4ade80' }}>{formatCurrency(f.cost)}</span>
                   ) : (
                     <span style={{ color: 'var(--text-secondary)' }}>—</span>
                   )}
