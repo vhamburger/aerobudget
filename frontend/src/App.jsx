@@ -5,6 +5,33 @@ import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
+
+const valueOnTopPlugin = {
+  id: 'valueOnTop',
+  afterDatasetsDraw(chart) {
+    const { ctx, data } = chart;
+    ctx.save();
+    const textColor = chart.options.scales.x.ticks.color || '#888';
+    data.datasets.forEach((dataset, i) => {
+      if (dataset.type === 'bar') {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar, index) => {
+          const dataVal = dataset.data[index];
+          if (dataVal > 0) {
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.font = 'bold 10px Inter';
+            ctx.fillText(new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 }).format(dataVal) + ' €', bar.x, bar.y - 5);
+          }
+        });
+      }
+    });
+    ctx.restore();
+  }
+};
+
+ChartJS.register(valueOnTopPlugin);
 ChartJS.defaults.font.family = "'Inter', sans-serif";
 
 
@@ -60,6 +87,19 @@ function Dashboard({ stats, flights, theme }) {
   
   const months = showAllMonths ? allMonths : allMonths.slice(-12);
   const costs = showAllMonths ? allCosts : allCosts.slice(-12);
+
+  const trendlineData = costs.length > 1 ? (() => {
+    const n = costs.length;
+    const x = Array.from({ length: n }, (_, i) => i);
+    const y = costs;
+    const sumX = x.reduce((a, b) => a + b, 0);
+    const sumY = y.reduce((a, b) => a + b, 0);
+    const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
+    const sumX2 = x.reduce((a, b) => a + b * b, 0);
+    const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const b = (sumY - m * sumX) / n;
+    return x.map(xi => m * xi + b);
+  })() : [];
   
   const aircraftLabels = stats?.aircraft_stats?.map(a => a.aircraft) ?? [];
   const aircraftMinutes = stats?.aircraft_stats?.map(a => a.minutes) ?? [];
@@ -150,18 +190,45 @@ function Dashboard({ stats, flights, theme }) {
             </button>
           </div>
           {months.length > 0 ? (
-            <Line
+            <Bar
               key={`costs-${theme}`}
               data={{
                 labels: months,
-                datasets: [{ label: 'Kosten', data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
+                datasets: [
+                  { 
+                    type: 'bar',
+                    label: 'Kosten', 
+                    data: costs, 
+                    backgroundColor: 'rgba(56,189,248,0.5)', 
+                    borderRadius: 6,
+                    order: 2
+                  },
+                  {
+                    type: 'line',
+                    label: 'Trend',
+                    data: trendlineData,
+                    borderColor: '#f43f5e',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.1,
+                    order: 1
+                  }
+                ]
               }}
               options={{ 
                 responsive: true, 
-                plugins: { legend: { display: false } },
+                plugins: { 
+                  legend: { display: false },
+                  tooltip: {
+                    callbacks: {
+                      label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
+                    }
+                  }
+                },
                 scales: {
-                  x: { ticks: { color: textColor } },
-                  y: { ticks: { color: textColor } }
+                  x: { ticks: { color: textColor }, grid: { display: false } },
+                  y: { ticks: { color: textColor }, grid: { color: 'rgba(128,128,128,0.1)' } }
                 }
               }}
             />
@@ -684,7 +751,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.0.32</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.0.33</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
