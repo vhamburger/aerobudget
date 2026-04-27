@@ -84,8 +84,8 @@ function Dashboard({ stats, flights, theme }) {
   const [showAllMonths, setShowAllMonths] = useState(false);
   const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
   
-  const allMonths = stats?.monthly_costs?.map(m => m.month) ?? [];
-  const allCosts = stats?.monthly_costs?.map(m => m.cost) ?? [];
+  const allMonths = (stats?.monthly_costs || []).map(m => m.month || '');
+  const allCosts = (stats?.monthly_costs || []).map(m => m.cost || 0);
   
   const months = showAllMonths ? allMonths : allMonths.slice(-12);
   const costs = showAllMonths ? allCosts : allCosts.slice(-12);
@@ -98,7 +98,9 @@ function Dashboard({ stats, flights, theme }) {
     const sumY = y.reduce((a, b) => a + b, 0);
     const sumXY = x.reduce((a, b, i) => a + b * y[i], 0);
     const sumX2 = x.reduce((a, b) => a + b * b, 0);
-    const m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const denom = (n * sumX2 - sumX * sumX);
+    if (denom === 0) return Array(n).fill(sumY / n);
+    const m = (n * sumXY - sumX * sumY) / denom;
     const b = (sumY - m * sumX) / n;
     return x.map(xi => m * xi + b);
   })() : [];
@@ -192,19 +194,16 @@ function Dashboard({ stats, flights, theme }) {
             </button>
           </div>
           {months.length > 0 ? (
-            <Chart
-              type="bar"
+            <Bar
               key={`costs-${theme}`}
               data={{
                 labels: months,
                 datasets: [
                   { 
-                    type: 'bar',
                     label: 'Kosten', 
                     data: costs, 
                     backgroundColor: 'rgba(56,189,248,0.5)', 
-                    borderRadius: 6,
-                    order: 2
+                    borderRadius: 6
                   },
                   {
                     type: 'line',
@@ -214,20 +213,14 @@ function Dashboard({ stats, flights, theme }) {
                     borderWidth: 2,
                     pointRadius: 0,
                     fill: false,
-                    tension: 0.1,
-                    order: 1
+                    tension: 0.1
                   }
                 ]
               }}
               options={{ 
                 responsive: true, 
                 plugins: { 
-                  legend: { display: false },
-                  tooltip: {
-                    callbacks: {
-                      label: (ctx) => `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`
-                    }
-                  }
+                  legend: { display: false }
                 },
                 scales: {
                   x: { ticks: { color: textColor }, grid: { display: false } },
@@ -754,7 +747,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.0.35</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.0.36</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
