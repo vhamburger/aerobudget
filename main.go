@@ -19,7 +19,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+const AppVersion = "1.0.27"
+
 func main() {
+	log.Printf("=========================================")
+	log.Printf("   Aerobudget Starting (v%s)", AppVersion)
+	log.Printf("=========================================")
+	
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
 		dbPath = "data/aerobudget.db"
