@@ -31,13 +31,30 @@ function formatDate(isoDate) {
   return `${d}.${m}.${y}`;
 }
 
+function getColor(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+}
+
 function Dashboard({ stats }) {
-  const months = stats?.monthly_costs?.map(m => m.month) ?? [];
-  const costs = stats?.monthly_costs?.map(m => m.cost) ?? [];
+  const [showAllMonths, setShowAllMonths] = useState(false);
+  
+  const allMonths = stats?.monthly_costs?.map(m => m.month) ?? [];
+  const allCosts = stats?.monthly_costs?.map(m => m.cost) ?? [];
+  
+  const months = showAllMonths ? allMonths : allMonths.slice(-12);
+  const costs = showAllMonths ? allCosts : allCosts.slice(-12);
+  
   const aircraftLabels = stats?.aircraft_stats?.map(a => a.aircraft) ?? [];
   const aircraftMinutes = stats?.aircraft_stats?.map(a => a.minutes) ?? [];
+  const aircraftColors = aircraftLabels.map(l => getColor(l));
+  
   const trainingLabels = stats?.training_stats?.map(t => t.name) ?? [];
   const trainingCosts = stats?.training_stats?.map(t => t.cost) ?? [];
+  const trainingColors = trainingLabels.map(l => getColor(l));
 
   return (
     <>
@@ -62,16 +79,22 @@ function Dashboard({ stats }) {
         </div>
 
         <div className="glass-panel">
-          <h2>Kostenentwicklung</h2>
-          {months.length > 0 ? (
-            <Line
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
+          {trainingLabels.length > 0 ? (
+            <Doughnut
               data={{
-                labels: months,
-                datasets: [{ label: 'Kosten', data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
+                labels: trainingLabels,
+                datasets: [{ data: trainingCosts, backgroundColor: trainingColors, borderWidth: 0 }]
               }}
-              options={{ responsive: true, plugins: { legend: { display: false } } }}
+              options={{
+                cutout: '70%',
+                plugins: {
+                  legend: { position: 'bottom', labels: { color: 'var(--text-primary)' } },
+                  tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed.toFixed(2)} €` } }
+                }
+              }}
             />
-          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Ausbildung aktiv</p>}
         </div>
 
         <div className="glass-panel">
@@ -79,7 +102,7 @@ function Dashboard({ stats }) {
           <Doughnut
             data={{
               labels: aircraftLabels,
-              datasets: [{ data: aircraftMinutes, backgroundColor: ['#38bdf8', '#8b5cf6', '#f59e0b', '#10b981'], borderWidth: 0 }]
+              datasets: [{ data: aircraftMinutes, backgroundColor: aircraftColors, borderWidth: 0 }]
             }}
             options={{
               cutout: '70%',
@@ -91,18 +114,27 @@ function Dashboard({ stats }) {
           />
         </div>
 
-        {trainingLabels.length > 0 && (
-          <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
-            <Bar
-              data={{
-                labels: trainingLabels,
-                datasets: [{ label: 'Kosten (€)', data: trainingCosts, backgroundColor: ['#8b5cf6', '#f59e0b', '#10b981', '#38bdf8', '#f43f5e'], borderRadius: 6 }]
-              }}
-              options={{ responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }}
-            />
+        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2>Kostenentwicklung</h2>
+            <button 
+              onClick={() => setShowAllMonths(!showAllMonths)}
+              className="nav-btn" 
+              style={{ fontSize: '0.8rem', padding: '4px 12px', background: 'rgba(56,189,248,0.1)' }}
+            >
+              {showAllMonths ? 'Letzte 12 Monate' : 'Alle anzeigen'}
+            </button>
           </div>
-        )}
+          {months.length > 0 ? (
+            <Line
+              data={{
+                labels: months,
+                datasets: [{ label: 'Kosten', data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
+              }}
+              options={{ responsive: true, plugins: { legend: { display: false } } }}
+            />
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
+        </div>
       </main>
     </>
   );
