@@ -132,8 +132,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 			matches := amountsRe.FindAllStringSubmatch(line, -1)
 			var prices []float64
 			for _, m := range matches {
-				p := parseGermanAmount(m[1])
-				if p > 0 { prices = append(prices, p) }
+				prices = append(prices, parseGermanAmount(m[1]))
 			}
 
 			// Strategy A: Keyword-based (Stricter)
