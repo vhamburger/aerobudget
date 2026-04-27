@@ -109,9 +109,11 @@ func processNewInvoice(filePath string) {
 
 	// 4. Matching der Einzelposten gegen bestehende Flüge
 	matches := 0
+	matchedFlightIDs := make(map[int]bool)
 	for _, item := range invoice.LineItems {
-		if err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item.Amount, int(invoiceID)); err == nil {
+		if flightID, err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item.Amount, int(invoiceID), matchedFlightIDs); err == nil {
 			matches++
+			matchedFlightIDs[flightID] = true
 		}
 	}
 
@@ -119,35 +121,48 @@ func processNewInvoice(filePath string) {
 }
 
 // MatchInvoiceToFlight führt das eigentliche SQL-Update durch
-func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID int) error {
+func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID int, matchedFlightIDs map[int]bool) (int, error) {
 	// Konvertiere PDF Datum (DD.MM.YYYY) zu DB Datum (YYYY-MM-DD)
 	dbDate := date
 	if parts := strings.Split(date, "."); len(parts) == 3 {
 		dbDate = fmt.Sprintf("%s-%s-%s", parts[2], parts[1], parts[0])
 	}
 
+	// Filter aus den bereits gematchten IDs bauen
+	var excludeIDs []string
+	for id := range matchedFlightIDs {
+		excludeIDs = append(excludeIDs, fmt.Sprintf("%d", id))
+	}
+	excludeClause := ""
+	if len(excludeIDs) > 0 {
+		excludeClause = fmt.Sprintf("AND id NOT IN (%s)", strings.Join(excludeIDs, ","))
+	}
+
 	var flightID int
 	// Suche Flug am selben Tag mit selbem Kennzeichen, der noch keine Rechnung hat ODER schon diese Rechnung hat
-	err := db.DB.Get(&flightID, `
+	query := fmt.Sprintf(`
 		SELECT id FROM flights 
-		WHERE date = ? AND aircraft = ? AND (invoice_id IS NULL OR invoice_id = ?)
+		WHERE date = ? AND aircraft = ? AND (invoice_id IS NULL OR invoice_id = ?) %s
+		ORDER BY id ASC
 		LIMIT 1
-	`, dbDate, aircraft, invoiceID)
+	`, excludeClause)
+
+	err := db.DB.Get(&flightID, query, dbDate, aircraft, invoiceID)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Printf("[Matcher] Kein Flug für %s am %s", aircraft, dbDate)
 		}
-		return err
+		return 0, err
 	}
 
 	_, err = db.DB.Exec(`UPDATE flights SET cost = ?, invoice_id = ? WHERE id = ?`, cost, invoiceID, flightID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	log.Printf("[Matcher] Flug %d erfolgreich verknüpft.", flightID)
-	return nil
+	return flightID, nil
 }
 
 // ReconcileMissingCosts für den manuellen Abgleich
