@@ -10,7 +10,7 @@ COPY frontend/ ./
 RUN if [ -f "package.json" ]; then npm run build; fi
 
 # Build stage for Backend (Go)
-FROM golang:1.22-alpine AS backend-builder
+FROM golang:alpine AS backend-builder
 WORKDIR /app
 # Install build dependencies if needed (e.g., for CGO if we use it, but we plan to use pure Go SQLite)
 RUN apk add --no-cache gcc musl-dev
