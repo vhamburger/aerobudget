@@ -3,7 +3,7 @@ services:
     build: .
     container_name: aerobudget
     ports:
-      - "8080:8080"
+      - "8080:8011"
     volumes:
       # Mount the data directory to persist the SQLite database
       - ./data:/app/data
