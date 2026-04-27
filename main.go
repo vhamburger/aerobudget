@@ -19,7 +19,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.0.31"
+const AppVersion = "1.0.32"
 
 func main() {
 	log.Printf("=========================================")
@@ -58,9 +58,12 @@ func main() {
 			FlightRule    string  `db:"flight_rule" json:"flight_rule"`
 			Pilot         string  `db:"pilot" json:"pilot"`
 			Cost          float64 `db:"cost" json:"cost"`
+			FlightCost    float64 `db:"flight_cost" json:"flight_cost"`
+			LandingFee    float64 `db:"landing_fee" json:"landing_fee"`
+			ApproachFee   float64 `db:"approach_fee" json:"approach_fee"`
 			InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
 		}
-		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot, cost, invoice_id FROM flights ORDER BY date DESC`)
+		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot, cost, flight_cost, landing_fee, approach_fee, invoice_id FROM flights ORDER BY date DESC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -78,6 +81,9 @@ func main() {
 				FlightRule    string  `db:"flight_rule" json:"flight_rule"`
 				Pilot         string  `db:"pilot" json:"pilot"`
 				Cost          float64 `db:"cost" json:"cost"`
+				FlightCost    float64 `db:"flight_cost" json:"flight_cost"`
+				LandingFee    float64 `db:"landing_fee" json:"landing_fee"`
+				ApproachFee   float64 `db:"approach_fee" json:"approach_fee"`
 				InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
 			}{}
 		}
