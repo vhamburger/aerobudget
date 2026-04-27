@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, ChevronRight } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,23 +13,23 @@ import {
   ArcElement
 } from 'chart.js';
 import { Line, Doughnut } from 'react-chartjs-2';
-import './index.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend);
 
 const API = '';
 
+// Helper: Format minutes to Hh MMm
 function formatMinutes(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${h}h ${m.toString().padStart(2, '0')}m`;
 }
 
-// Convert ISO date YYYY-MM-DD → DD.MM.YYYY for display
+// Helper: ISO Date to DD.MM.YYYY
 function formatDate(isoDate) {
   if (!isoDate) return '';
   const [y, m, d] = isoDate.split('-');
-  if (!y || !m || !d) return isoDate; // fallback
+  if (!y || !m || !d) return isoDate;
   return `${d}.${m}.${y}`;
 }
 
@@ -41,8 +41,10 @@ function Dashboard({ stats }) {
 
   return (
     <>
-      <header className="header">
-        <h1>✈  Aerobudget</h1>
+      <header className="header" style={{ marginBottom: '24px' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ color: '#38bdf8' }}>✈</span> Aerobudget
+        </h1>
         <p style={{ color: 'var(--text-secondary)' }}>Dein Pilot Kosten Tracker</p>
       </header>
 
@@ -76,7 +78,7 @@ function Dashboard({ stats }) {
               }}
               options={{ responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { color: 'rgba(255,255,255,0.05)' } } } }}
             />
-          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', paddingTop: 40 }}>Noch keine Kostendaten – weise Rechnungen zu!</p>}
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', paddingTop: 40 }}>Noch keine Kostendaten</p>}
         </div>
 
         <div className="glass-panel">
@@ -90,17 +92,11 @@ function Dashboard({ stats }) {
               options={{
                 cutout: '70%',
                 plugins: {
-                  legend: {
-                    position: 'bottom',
-                    labels: { color: '#f8fafc' }
-                  },
+                  legend: { position: 'bottom', labels: { color: '#f8fafc' } },
                   tooltip: {
                     callbacks: {
                       label: function (context) {
-                        const label = context.label || '';
-                        const value = context.parsed;
-                        // Hier nutzen wir deine bestehende formatMinutes Funktion
-                        return `${label}: ${formatMinutes(value)}`;
+                        return `${context.label}: ${formatMinutes(context.parsed)}`;
                       }
                     }
                   }
@@ -139,13 +135,133 @@ function FlightTable({ flights }) {
                   <td style={{ padding: '10px 12px' }}>{f.arrival}</td>
                   <td style={{ padding: '10px 12px' }}>{formatMinutes(f.block_minutes)}</td>
                   <td style={{ padding: '10px 12px' }}>{formatMinutes(f.flight_minutes)}</td>
-                  <td style={{ padding: '10px 12px' }}>{f.cost > 0 ? `${f.cost.toFixed(2)} €` : <span style={{ color: 'var(--text-secondary)' }}>—</span>}</td>
+                  <td style={{ padding: '10px 12px' }}>{f.cost > 0 ? `${f.cost.toFixed(2)} €` : '—'}</td>
                   <td style={{ padding: '10px 12px', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{f.pilot}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
+  const [subTab, setSubTab] = useState('data'); // Default to data for this task
+
+  const toggleAll = () => {
+    if (selectedIds.length === flights.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(flights.map(f => f.id));
+    }
+  };
+
+  const toggleOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <div className="dashboard-grid" style={{ gridTemplateColumns: '260px 1fr' }}>
+      {/* Sidebar Sub-Menu */}
+      <div className="glass-panel" style={{ height: 'fit-content' }}>
+        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '16px' }}>Einstellungen</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <button
+            onClick={() => setSubTab('general')}
+            className="nav-btn"
+            style={{ width: '100%', justifyContent: 'flex-start', background: subTab === 'general' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'general' ? '#38bdf8' : 'inherit' }}
+          >
+            <Settings size={14} style={{ marginRight: 8 }} /> Allgemein
+          </button>
+          <button
+            onClick={() => setSubTab('data')}
+            className="nav-btn"
+            style={{ width: '100%', justifyContent: 'flex-start', background: subTab === 'data' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'data' ? '#38bdf8' : 'inherit' }}
+          >
+            <Database size={14} style={{ marginRight: 8 }} /> Datenverwaltung
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="glass-panel">
+        {subTab === 'general' && (
+          <div style={{ padding: '20px', textAlign: 'center' }}>
+            <Settings size={48} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
+            <h2>Allgemeine Einstellungen</h2>
+            <p style={{ color: 'var(--text-secondary)' }}>Hier kannst du bald dein Profil und deine Präferenzen verwalten.</p>
+          </div>
+        )}
+
+        {subTab === 'data' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div>
+                <h2>Datenverwaltung</h2>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Importierte Flüge bereinigen oder korrigieren</p>
+              </div>
+              <button
+                onClick={onBatchDelete}
+                disabled={selectedIds.length === 0}
+                className="nav-btn"
+                style={{
+                  backgroundColor: selectedIds.length > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.05)',
+                  color: selectedIds.length > 0 ? '#f87171' : 'var(--text-secondary)',
+                  border: selectedIds.length > 0 ? '1px solid #f87171' : '1px solid transparent'
+                }}
+              >
+                <Trash2 size={16} style={{ marginRight: 8 }} />
+                {selectedIds.length === 0 ? 'Auswahl löschen' : `${selectedIds.length} Flüge löschen`}
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                    <th style={{ padding: '12px' }}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 16, height: 16, cursor: 'pointer' }}
+                        checked={selectedIds.length === flights.length && flights.length > 0}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                    <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Datum</th>
+                    <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Flugzeug</th>
+                    <th style={{ padding: '12px', color: 'var(--text-secondary)' }}>Route</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {flights.map(f => (
+                    <tr key={f.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '12px' }}>
+                        <input
+                          type="checkbox"
+                          style={{ width: 16, height: 16, cursor: 'pointer' }}
+                          checked={selectedIds.includes(f.id)}
+                          onChange={() => toggleOne(f.id)}
+                        />
+                      </td>
+                      <td style={{ padding: '12px' }}>{formatDate(f.date)}</td>
+                      <td style={{ padding: '12px' }}>{f.aircraft}</td>
+                      <td style={{ padding: '12px' }}>{f.departure} → {f.arrival}</td>
+                    </tr>
+                  ))}
+                  {flights.length === 0 && (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>Keine Daten vorhanden.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -175,17 +291,19 @@ function ImportView({ onImported }) {
 
   return (
     <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr' }}>
-      <div className="glass-panel" style={{ textAlign: 'center', padding: '48px' }}>
-        <Upload size={48} style={{ color: '#38bdf8', marginBottom: 16 }} />
+      <div className="glass-panel" style={{ textAlign: 'center', padding: '64px 24px' }}>
+        <div style={{ background: 'rgba(56,189,248,0.1)', width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          <Upload size={32} style={{ color: '#38bdf8' }} />
+        </div>
         <h2 style={{ marginBottom: 8 }}>Logbuch importieren</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>B4 Takeoff CSV Export hochladen</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 32, maxWidth: '400px', margin: '0 auto 32px' }}>Lade deinen B4 Takeoff CSV Export hoch, um deine Flugdaten zu synchronisieren.</p>
         <label style={{ cursor: 'pointer' }}>
           <input type="file" accept=".csv" onChange={handleUpload} style={{ display: 'none' }} id="csv-upload" />
-          <span style={{ background: 'linear-gradient(135deg, #38bdf8, #8b5cf6)', color: 'white', padding: '12px 28px', borderRadius: 8, fontWeight: 600 }}>
+          <span style={{ background: 'linear-gradient(135deg, #38bdf8, #8b5cf6)', color: 'white', padding: '14px 32px', borderRadius: 8, fontWeight: 600, display: 'inline-block', boxShadow: '0 4px 15px rgba(56,189,248,0.3)' }}>
             {loading ? 'Lädt...' : 'CSV Datei auswählen'}
           </span>
         </label>
-        {status && <p style={{ marginTop: 20, color: status.includes('Fehler') ? '#f87171' : '#4ade80' }}>{status}</p>}
+        {status && <div style={{ marginTop: 24, padding: '12px', borderRadius: 8, background: 'rgba(255,255,255,0.05)', color: status.includes('Fehler') ? '#f87171' : '#4ade80', display: 'inline-block' }}>{status}</div>}
       </div>
     </div>
   );
@@ -195,6 +313,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [flights, setFlights] = useState([]);
+  const [selectedFlightIds, setSelectedFlightIds] = useState([]);
 
   async function loadData() {
     try {
@@ -211,6 +330,29 @@ function App() {
 
   useEffect(() => { loadData(); }, []);
 
+  async function deleteSelectedFlights() {
+    if (selectedFlightIds.length === 0) return;
+    if (!window.confirm(`${selectedFlightIds.length} Flüge wirklich löschen?`)) return;
+
+    try {
+      const response = await fetch(`${API}/api/flights/delete-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedFlightIds })
+      });
+
+      if (response.ok) {
+        setSelectedFlightIds([]);
+        loadData();
+      } else {
+        alert('Fehler beim Batch-Löschen');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Netzwerkfehler beim Löschen');
+    }
+  }
+
   const navItems = [
     { id: 'dashboard', icon: <BarChart3 size={16} />, label: 'Dashboard' },
     { id: 'flights', icon: <Plane size={16} />, label: 'Flüge' },
@@ -220,31 +362,40 @@ function App() {
 
   return (
     <div className="app-container">
-      <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', padding: '12px 24px' }}>
+      <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', padding: '12px 24px', position: 'sticky', top: '24px', zIndex: 100 }}>
         {navItems.map(item => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id)}
             className="nav-btn"
-            style={{ background: activeTab === item.id ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === item.id ? '#38bdf8' : 'inherit' }}
+            style={{
+              background: activeTab === item.id ? 'rgba(56,189,248,0.2)' : 'transparent',
+              color: activeTab === item.id ? '#38bdf8' : 'inherit',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
           >
             {item.icon} {item.label}
           </button>
         ))}
       </nav>
 
-      {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} />}
-      {activeTab === 'flights' && <FlightTable flights={flights} />}
-      {activeTab === 'import' && <ImportView onImported={loadData} />}
-      {activeTab === 'settings' && (
-        <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr' }}>
-          <div className="glass-panel" style={{ textAlign: 'center', padding: '64px' }}>
-            <Settings size={48} style={{ color: 'var(--text-secondary)', marginBottom: 16 }} />
-            <h2>Einstellungen</h2>
-            <p style={{ color: 'var(--text-secondary)' }}>Kommt bald...</p>
-          </div>
-        </div>
-      )}
+      <div style={{ padding: '0 24px 24px 24px' }}>
+        {activeTab === 'dashboard' && <Dashboard stats={stats} />}
+        {activeTab === 'flights' && <FlightTable flights={flights} />}
+        {activeTab === 'import' && <ImportView onImported={loadData} />}
+        {activeTab === 'settings' && (
+          <SettingsView
+            flights={flights}
+            selectedIds={selectedFlightIds}
+            setSelectedIds={setSelectedFlightIds}
+            onBatchDelete={deleteSelectedFlights}
+          />
+        )}
+      </div>
     </div>
   );
 }
