@@ -50,10 +50,24 @@ func main() {
 			Cost          float64 `db:"cost" json:"cost"`
 			InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
 		}
-		err := db.DB.Select(&flights, `SELECT * FROM flights ORDER BY date DESC`)
+		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, pilot, cost, invoice_id FROM flights ORDER BY date DESC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
+		}
+		if flights == nil {
+			flights = []struct {
+				ID            int     `db:"id" json:"id"`
+				Date          string  `db:"date" json:"date"`
+				Aircraft      string  `db:"aircraft" json:"aircraft"`
+				Departure     string  `db:"departure" json:"departure"`
+				Arrival       string  `db:"arrival" json:"arrival"`
+				BlockMinutes  int     `db:"block_minutes" json:"block_minutes"`
+				FlightMinutes int     `db:"flight_minutes" json:"flight_minutes"`
+				Pilot         string  `db:"pilot" json:"pilot"`
+				Cost          float64 `db:"cost" json:"cost"`
+				InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
+			}{}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(flights)
@@ -142,7 +156,14 @@ func main() {
 			Name        string `db:"name" json:"name"`
 			BillingType string `db:"billing_type" json:"billing_type"`
 		}
-		db.DB.Select(&clubs, `SELECT * FROM clubs ORDER BY name ASC`)
+		db.DB.Select(&clubs, `SELECT id, name, billing_type FROM clubs ORDER BY name ASC`)
+		if clubs == nil {
+			clubs = []struct {
+				ID          int    `db:"id" json:"id"`
+				Name        string `db:"name" json:"name"`
+				BillingType string `db:"billing_type" json:"billing_type"`
+			}{}
+		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(clubs)
 	})
