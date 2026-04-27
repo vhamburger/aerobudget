@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import logo from './assets/AeroBudget-transparent-logo.png';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler);
 
@@ -40,13 +41,6 @@ function Dashboard({ stats }) {
 
   return (
     <>
-      <header className="header" style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ color: '#38bdf8' }}>✈</span> Aerobudget
-        </h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Dein Pilot Kosten Tracker</p>
-      </header>
-
       <main className="dashboard-grid">
         <div className="glass-panel" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', gridColumn: '1 / -1' }}>
           <div style={{ flex: 1, minWidth: '140px' }}>
@@ -552,6 +546,11 @@ function App() {
 
   return (
     <div className="app-container">
+      <header className="header" style={{ paddingTop: '40px', paddingBottom: '0px' }}>
+        <img src={logo} alt="AeroBudget Logo" style={{ height: '80px', width: 'auto' }} />
+        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>Dein Pilot Kosten Tracker</p>
+      </header>
+
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
         <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
           <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
