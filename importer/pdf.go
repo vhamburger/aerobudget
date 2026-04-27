@@ -25,6 +25,12 @@ type PDFLineItem struct {
 	Amount               float64
 }
 
+type ClubConfig struct {
+	Name        string
+	BillingType string
+}
+
+
 func ExtractText(filePath string) (string, error) {
 	cmd := exec.Command("pdftotext", "-layout", filePath, "-")
 	var out bytes.Buffer
@@ -38,10 +44,19 @@ func ExtractText(filePath string) (string, error) {
 	return out.String(), nil
 }
 
-// ParseInvoiceText akzeptiert nun eine Liste bekannter Kennzeichen aus der DB
-func ParseInvoiceText(text string, knownAircraft []string) (PDFInvoice, error) {
+// ParseInvoiceText akzeptiert nun eine Liste bekannter Kennzeichen aus der DB und Vereins-Konfigurationen
+func ParseInvoiceText(text string, knownAircraft []string, clubs []ClubConfig) (PDFInvoice, error) {
 	inv := PDFInvoice{}
 	lines := strings.Split(text, "\n")
+
+	heuristic := "default"
+	for _, c := range clubs {
+		if strings.Contains(text, c.Name) {
+			heuristic = c.BillingType
+			log.Printf("[Parser] Verein erkannt: %s, nutze Heuristik: %s", c.Name, heuristic)
+			break
+		}
+	}
 
 	// 1. Dynamischen Regex für Kennzeichen erstellen
 	var aircraftRe *regexp.Regexp
@@ -84,13 +99,40 @@ func ParseInvoiceText(text string, knownAircraft []string) (PDFInvoice, error) {
 		dateMatch := itemDateRe.FindString(line)
 
 		if regMatch != "" && dateMatch != "" {
-			// Suche nach dem Betrag (oft am Zeilenende)
-			priceRe := regexp.MustCompile(`([\d,.]+)\s*$`)
-			priceMatch := priceRe.FindStringSubmatch(strings.TrimSpace(line))
-
 			var price float64
-			if len(priceMatch) > 1 {
-				price = parseGermanAmount(priceMatch[1])
+
+			// Suche nach allen Beträgen mit 2 Nachkommastellen in der Zeile
+			amountsRe := regexp.MustCompile(`\b(\d+(?:[.,]\d{2}))\b`)
+			matches := amountsRe.FindAllStringSubmatch(line, -1)
+			
+			var extractedPrices []float64
+			for _, m := range matches {
+				p := parseGermanAmount(m[1])
+				if p > 0 {
+					extractedPrices = append(extractedPrices, p)
+				}
+			}
+
+			if len(extractedPrices) > 0 {
+				if heuristic == "highest_value" {
+					for _, p := range extractedPrices {
+						if p > price {
+							price = p
+						}
+					}
+				} else if heuristic == "last_column" {
+					price = extractedPrices[len(extractedPrices)-1]
+				} else {
+					// Default: Try to get the very last amount of the line
+					price = extractedPrices[len(extractedPrices)-1]
+				}
+			} else if heuristic == "default" {
+				// Fallback auf alten Ansatz, falls RegEx ohne Kommastellen
+				priceRe := regexp.MustCompile(`([\d,.]+)\s*$`)
+				priceMatch := priceRe.FindStringSubmatch(strings.TrimSpace(line))
+				if len(priceMatch) > 1 {
+					price = parseGermanAmount(priceMatch[1])
+				}
 			}
 
 			inv.LineItems = append(inv.LineItems, PDFLineItem{

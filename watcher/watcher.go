@@ -58,14 +58,21 @@ func processNewInvoice(filePath string) {
 		log.Printf("[Watcher] Fehler beim Abrufen der Kennzeichen: %v", err)
 	}
 
+	// 1.5 Vereins-Konfigurationen laden
+	var clubs []importer.ClubConfig
+	err = db.DB.Select(&clubs, `SELECT name, billing_type FROM clubs`)
+	if err != nil {
+		log.Printf("[Watcher] Fehler beim Abrufen der Vereine: %v", err)
+	}
+
 	text, err := importer.ExtractText(filePath)
 	if err != nil {
 		log.Printf("[Watcher] Fehler beim Auslesen der PDF: %v", err)
 		return
 	}
 
-	// 2. Parser mit den Kennzeichen aufrufen
-	invoice, err := importer.ParseInvoiceText(text, knownAircraft)
+	// 2. Parser mit den Kennzeichen und Vereinen aufrufen
+	invoice, err := importer.ParseInvoiceText(text, knownAircraft, clubs)
 	if err != nil {
 		log.Printf("[Watcher] Fehler beim Parsen: %v", err)
 		return
