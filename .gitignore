@@ -30,3 +30,6 @@ data/invoices/*
 
 # macOS
 .DS_Store
+
+# Personal flight data - NEVER commit these!
+*.csv
