@@ -26,8 +26,8 @@ type PDFLineItem struct {
 }
 
 type ClubConfig struct {
-	Name        string
-	BillingType string
+	Name        string `db:"name"`
+	BillingType string `db:"billing_type"`
 }
 
 

@@ -127,12 +127,12 @@ func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID 
 	}
 
 	var flightID int
-	// Suche Flug am selben Tag mit selbem Kennzeichen, der noch keine Rechnung hat
+	// Suche Flug am selben Tag mit selbem Kennzeichen, der noch keine Rechnung hat ODER schon diese Rechnung hat
 	err := db.DB.Get(&flightID, `
 		SELECT id FROM flights 
-		WHERE date = ? AND aircraft = ? AND invoice_id IS NULL
+		WHERE date = ? AND aircraft = ? AND (invoice_id IS NULL OR invoice_id = ?)
 		LIMIT 1
-	`, dbDate, aircraft)
+	`, dbDate, aircraft, invoiceID)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
