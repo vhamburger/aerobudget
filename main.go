@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -76,6 +77,48 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		enc := json.NewEncoder(w)
 		enc.Encode(flights)
+	})
+
+	r.Delete("/api/flights/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		_, err := db.DB.Exec(`DELETE FROM flights WHERE id = ?`, id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	r.Post("/api/flights/delete-batch", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			IDs []int `json:"ids"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if len(req.IDs) == 0 {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		// sqlx.In hilft uns, das Slice (?) in eine (id1, id2, ...) Liste umzuwandeln
+		query, args, err := sqlx.In(`DELETE FROM flights WHERE id IN (?)`, req.IDs)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		query = db.DB.Rebind(query) // Für SQLite/Postgres Kompatibilität
+
+		_, err = db.DB.Exec(query, args...)
+		if err != nil {
+			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"message": "Erfolgreich %d Flüge gelöscht"}`, len(req.IDs))
 	})
 
 	r.Get("/api/stats", func(w http.ResponseWriter, r *http.Request) {

@@ -42,8 +42,8 @@ function Dashboard({ stats }) {
   return (
     <>
       <header className="header">
-        <h1>✈️ Aerobudget</h1>
-        <p style={{ color: 'var(--text-secondary)' }}>Dein Pilot Cost Tracker</p>
+        <h1>✈  Aerobudget</h1>
+        <p style={{ color: 'var(--text-secondary)' }}>Dein Pilot Kosten Tracker</p>
       </header>
 
       <main className="dashboard-grid">
@@ -87,7 +87,25 @@ function Dashboard({ stats }) {
                 labels: aircraftLabels,
                 datasets: [{ data: aircraftMinutes, backgroundColor: ['#38bdf8', '#8b5cf6', '#f59e0b', '#10b981'], borderWidth: 0 }]
               }}
-              options={{ cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#f8fafc' } } } }}
+              options={{
+                cutout: '70%',
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                    labels: { color: '#f8fafc' }
+                  },
+                  tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        // Hier nutzen wir deine bestehende formatMinutes Funktion
+                        return `${label}: ${formatMinutes(value)}`;
+                      }
+                    }
+                  }
+                }
+              }}
             />
           ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', paddingTop: 40 }}>Keine Flugzeugdaten</p>}
         </div>
