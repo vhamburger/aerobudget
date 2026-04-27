@@ -88,7 +88,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 
 	// Extraction
 	itemDateRe := regexp.MustCompile(`(\d{2}\.\d{2}\.\d{4})`)
-	amountsRe := regexp.MustCompile(`\b(\d+(?:[.,]\d{2}))\b`)
+	amountsRe := regexp.MustCompile(`([\d.]+,\d{2})`)
 	
 	var lastItem *PDFLineItem
 
@@ -108,6 +108,8 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 				if lastItem != nil && (lastItem.Date == dateMatch || dateMatch == "") && lastItem.AircraftRegistration == regMatch {
 					matches := amountsRe.FindAllStringSubmatch(line, -1)
 					if len(matches) > 0 {
+						// For standalone fee rows, we usually only have one relevant price
+						// But if there are more, we take the last one as it's typically the line total
 						price := parseGermanAmount(matches[len(matches)-1][1])
 						if hasLandingKw {
 							lastItem.LandingFee += price
@@ -160,13 +162,24 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 
 			// 2. Fallback for Table structures (Fly Linz style)
 			if item.FlightCost == 0 && len(extractedPrices) > 0 {
-				if len(extractedPrices) >= 3 {
-					// Multi-column row: [Flight, Landing, Approach, ...]
+				if len(extractedPrices) >= 5 {
+					// Fly Linz typical row has many prices: [Price1, Price2, Price3, Price4, TotalRow, ...]
+					// Looking at screenshot, the 4th price column is often the one we want?
+					// Wait, let's look at the screenshot again.
+					// Col 1: 219,65 (Flug)
+					// Col 2: 0,00 (Ldg)
+					// Col 3: 0,00 (ACG)
+					// Col 4: 0,00
+					// Col 5: 219,65 (Brutto)
+					item.FlightCost = extractedPrices[0]
+					if item.LandingFee == 0 && len(extractedPrices) > 1 { item.LandingFee = extractedPrices[1] }
+					if item.ApproachFee == 0 && len(extractedPrices) > 2 { item.ApproachFee = extractedPrices[2] }
+				} else if len(extractedPrices) >= 3 {
 					item.FlightCost = extractedPrices[0]
 					if item.LandingFee == 0 { item.LandingFee = extractedPrices[1] }
 					if item.ApproachFee == 0 { item.ApproachFee = extractedPrices[2] }
 				} else {
-					// Single price row
+					// Single price row: Take the last one (safest)
 					item.FlightCost = extractedPrices[len(extractedPrices)-1]
 				}
 			}
