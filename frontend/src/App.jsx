@@ -51,8 +51,9 @@ function getColor(str) {
   return palette[idx];
 }
 
-function Dashboard({ stats, flights }) {
+function Dashboard({ stats, flights, theme }) {
   const [showAllMonths, setShowAllMonths] = useState(false);
+  const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
   
   const allMonths = stats?.monthly_costs?.map(m => m.month) ?? [];
   const allCosts = stats?.monthly_costs?.map(m => m.cost) ?? [];
@@ -94,6 +95,7 @@ function Dashboard({ stats, flights }) {
           <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
           {trainingLabels.length > 0 ? (
             <Pie
+              key={`training-${theme}`}
               data={{
                 labels: trainingLabels,
                 datasets: [{ 
@@ -107,7 +109,7 @@ function Dashboard({ stats, flights }) {
                 plugins: {
                   legend: { 
                     position: 'bottom', 
-                    labels: { color: 'var(--text-primary)', padding: 20 } 
+                    labels: { color: textColor, padding: 20 } 
                   },
                   tooltip: { 
                     callbacks: { label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.parsed)}` } 
@@ -121,6 +123,7 @@ function Dashboard({ stats, flights }) {
         <div className="glass-panel">
           <h2>Flugzeit pro Flugzeug</h2>
           <Doughnut
+            key={`aircraft-${theme}`}
             data={{
               labels: aircraftLabels,
               datasets: [{ data: aircraftMinutes, backgroundColor: aircraftColors, borderWidth: 0 }]
@@ -128,7 +131,7 @@ function Dashboard({ stats, flights }) {
             options={{
               cutout: '70%',
               plugins: {
-                legend: { position: 'bottom', labels: { color: 'var(--text-primary)', padding: 20 } },
+                legend: { position: 'bottom', labels: { color: textColor, padding: 20 } },
                 tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${formatMinutes(ctx.parsed)}` } }
               }
             }}
@@ -148,11 +151,19 @@ function Dashboard({ stats, flights }) {
           </div>
           {months.length > 0 ? (
             <Line
+              key={`costs-${theme}`}
               data={{
                 labels: months,
                 datasets: [{ label: 'Kosten', data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
               }}
-              options={{ responsive: true, plugins: { legend: { display: false } } }}
+              options={{ 
+                responsive: true, 
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { ticks: { color: textColor } },
+                  y: { ticks: { color: textColor } }
+                }
+              }}
             />
           ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
         </div>
@@ -630,7 +641,7 @@ function App() {
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
-        {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} />}
+        {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} />}
         {activeTab === 'flights' && <FlightTable flights={flights} />}
         {activeTab === 'import' && <ImportView onImported={loadData} />}
         {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} />}
