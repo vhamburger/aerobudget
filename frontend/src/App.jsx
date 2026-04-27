@@ -318,9 +318,9 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               setNewTraining({ name: '', start_date: '', end_date: '' });
               loadData();
             }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', marginBottom: '24px' }}>
-              <input placeholder="Name (z.B. PPL)" value={newTraining.name} onChange={e => setNewTraining({...newTraining, name: e.target.value})} className="input-field" />
-              <input type="date" value={newTraining.start_date} onChange={e => setNewTraining({...newTraining, start_date: e.target.value})} className="input-field" />
-              <input type="date" value={newTraining.end_date} onChange={e => setNewTraining({...newTraining, end_date: e.target.value})} className="input-field" />
+              <input placeholder="Name (z.B. PPL)" value={newTraining.name} onChange={e => setNewTraining({ ...newTraining, name: e.target.value })} className="input-field" />
+              <input type="date" value={newTraining.start_date} onChange={e => setNewTraining({ ...newTraining, start_date: e.target.value })} className="input-field" />
+              <input type="date" value={newTraining.end_date} onChange={e => setNewTraining({ ...newTraining, end_date: e.target.value })} className="input-field" />
               <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white' }}>Hinzufügen</button>
             </form>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -357,48 +357,48 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               const isEdit = !!newTemplate.id;
               const url = isEdit ? `${API}/api/csv-templates/${newTemplate.id}` : `${API}/api/csv-templates`;
               const method = isEdit ? 'PUT' : 'POST';
-              
-              await fetch(url, { 
-                method, 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(newTemplate) 
+
+              await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newTemplate)
               });
-              
+
               setNewTemplate({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
               loadData();
             }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px', background: 'rgba(128,128,128,0.05)', padding: '16px', borderRadius: '8px' }}>
               <div>
-                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Profil Name</label>
-                <input placeholder="z.B. B4 Takeoff" value={newTemplate.name} onChange={e => setNewTemplate({...newTemplate, name: e.target.value})} className="input-field" style={{width:'100%'}} />
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Profil Name</label>
+                <input placeholder="z.B. B4 Takeoff" value={newTemplate.name} onChange={e => setNewTemplate({ ...newTemplate, name: e.target.value })} className="input-field" style={{ width: '100%' }} />
               </div>
               <div>
-                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Trennzeichen</label>
-                <input placeholder="z.B. ;" value={newTemplate.delimiter} onChange={e => setNewTemplate({...newTemplate, delimiter: e.target.value})} className="input-field" style={{width:'100%'}} />
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Trennzeichen</label>
+                <input placeholder="z.B. ;" value={newTemplate.delimiter} onChange={e => setNewTemplate({ ...newTemplate, delimiter: e.target.value })} className="input-field" style={{ width: '100%' }} />
               </div>
               <div>
-                <label style={{display:'block', marginBottom:4, fontSize:'0.8rem'}}>Datumsformat</label>
-                <input placeholder="02.01.2006" value={newTemplate.date_format} onChange={e => setNewTemplate({...newTemplate, date_format: e.target.value})} className="input-field" style={{width:'100%'}} />
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Datumsformat</label>
+                <input placeholder="02.01.2006" value={newTemplate.date_format} onChange={e => setNewTemplate({ ...newTemplate, date_format: e.target.value })} className="input-field" style={{ width: '100%' }} />
               </div>
-              
+
               <div style={{ fontSize: '0.8rem', gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginTop: '8px', borderTop: '1px solid rgba(128,128,128,0.1)', paddingTop: '12px' }}>
                 {[
-                  ['Datum', 'date_col'], 
-                  ['Flugzeug', 'aircraft_col'], 
-                  ['Startort', 'departure_col'], 
-                  ['Zielort', 'arrival_col'], 
-                  ['Blockzeit', 'block_minutes_col'], 
-                  ['Flugzeit', 'flight_minutes_col'], 
-                  ['Pilot (PIC)', 'pilot_col'], 
-                  ['Schulung', 'training_type_col'], 
+                  ['Datum', 'date_col'],
+                  ['Flugzeug', 'aircraft_col'],
+                  ['Startort', 'departure_col'],
+                  ['Zielort', 'arrival_col'],
+                  ['Blockzeit', 'block_minutes_col'],
+                  ['Flugzeit', 'flight_minutes_col'],
+                  ['Pilot (PIC)', 'pilot_col'],
+                  ['Schulung', 'training_type_col'],
                   ['Regeln (IFR)', 'flight_rule_col']
                 ].map(([label, key]) => (
                   <div key={key}>
-                    <label style={{display:'block', marginBottom:4}}>{label} Spalte</label>
-                    <input type="number" value={newTemplate[key]} onChange={e => setNewTemplate({...newTemplate, [key]: parseInt(e.target.value)})} className="input-field" style={{width:'100%'}} />
+                    <label style={{ display: 'block', marginBottom: 4 }}>{label} Spalte</label>
+                    <input type="number" value={newTemplate[key]} onChange={e => setNewTemplate({ ...newTemplate, [key]: parseInt(e.target.value) })} className="input-field" style={{ width: '100%' }} />
                   </div>
                 ))}
               </div>
-              
+
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white', flex: 1 }}>
                   {newTemplate.id ? 'Template aktualisieren' : 'Template Speichern'}
@@ -420,7 +420,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                 {templates.map(t => (
                   <tr key={t.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
                     <td style={{ padding: '12px' }}>
-                      <strong>{t.name}</strong> {t.is_default && <span style={{fontSize:'0.7rem', background:'#38bdf8', color:'white', padding:'2px 4px', borderRadius:4, marginLeft:4}}>DEFAULT</span>}
+                      <strong>{t.name}</strong> {t.is_default && <span style={{ fontSize: '0.7rem', background: '#38bdf8', color: 'white', padding: '2px 4px', borderRadius: 4, marginLeft: 4 }}>DEFAULT</span>}
                     </td>
                     <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                       Datum: {t.date_col} | Flugzeug: {t.aircraft_col} | PIC: {t.pilot_col} | Trenner: '{t.delimiter}'
@@ -433,7 +433,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                         <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b', marginTop: 8 }} />
                       )}
                       <button onClick={() => setNewTemplate(t)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Bearbeiten"><Edit2 size={16} /></button>
-                      <button onClick={async () => { if(confirm('Löschen?')) { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
+                      <button onClick={async () => { if (confirm('Löschen?')) { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -485,11 +485,11 @@ function ImportView({ onImported }) {
       <Upload size={48} style={{ color: '#38bdf8', marginBottom: 16 }} />
       <h2>Logbuch importieren</h2>
       <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Wähle ein Format und lade deine CSV Datei hoch</p>
-      
+
       <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
         <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Format:</span>
-        <select 
-          value={selectedTemplate} 
+        <select
+          value={selectedTemplate}
           onChange={e => setSelectedTemplate(e.target.value)}
           className="input-field"
           style={{ width: '200px' }}
@@ -547,8 +547,8 @@ function App() {
   return (
     <div className="app-container">
       <header className="header" style={{ paddingTop: '40px', paddingBottom: '0px' }}>
-        <img src={logo} alt="AeroBudget Logo" style={{ height: '80px', width: 'auto' }} />
-        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>Dein Pilot Kosten Tracker</p>
+        <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
+        <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>AerobBudget</p>
       </header>
 
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
@@ -565,9 +565,9 @@ function App() {
           <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
         </button>
         <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
-        <button 
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-          className="nav-btn" 
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          className="nav-btn"
           title="Thema wechseln"
           style={{ padding: '8px' }}
         >
