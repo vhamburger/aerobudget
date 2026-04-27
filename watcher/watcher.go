@@ -122,7 +122,7 @@ func processNewInvoice(filePath string) {
 }
 
 // MatchInvoiceToFlight führt das eigentliche SQL-Update durch
-func MatchInvoiceToFlight(date string, aircraft string, item importer.PDFLineItem, invoiceID int, matchedFlightIDs map[int]bool) (int, error) {
+func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineItem, invoiceID int, matchedFlightIDs map[int]bool) (int, error) {
 	// Konvertiere PDF Datum (DD.MM.YYYY) zu DB Datum (YYYY-MM-DD)
 	dbDate := date
 	if parts := strings.Split(date, "."); len(parts) == 3 {

@@ -19,7 +19,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.0.29"
+const AppVersion = "1.0.30"
 
 func main() {
 	log.Printf("=========================================")
