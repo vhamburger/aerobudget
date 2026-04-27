@@ -98,39 +98,32 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 		dateMatch := itemDateRe.FindString(line)
 
 		if regMatch != "" && dateMatch != "" {
-			// Check if this is a standalone fee row or a new flight
-			isStandaloneFee := false
-			if activeClub != nil {
-				hasLanding := activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword))
-				hasApproach := activeClub.ApproachFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.ApproachFeeKeyword))
-				
-				if hasLanding || hasApproach {
-					// Standalone fee rows (HB) don't have flight-specific info like "Start=" or "Flugzeit="
-					if !strings.Contains(lineLower, "start=") && !strings.Contains(lineLower, "flugzeit=") && !strings.Contains(lineLower, "min.") {
-						isStandaloneFee = true
+			// Classification based on user-defined keywords
+			hasLandingKw := activeClub != nil && activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword))
+			hasApproachKw := activeClub != nil && activeClub.ApproachFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.ApproachFeeKeyword))
+			hasFlightKw := activeClub != nil && activeClub.FlightAmountKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.FlightAmountKeyword))
+
+			// Standalone Fee Row detection (HB style): Has fee keyword but no flight keyword
+			if (hasLandingKw || hasApproachKw) && !hasFlightKw {
+				if lastItem != nil && (lastItem.Date == dateMatch || dateMatch == "") && lastItem.AircraftRegistration == regMatch {
+					matches := amountsRe.FindAllStringSubmatch(line, -1)
+					if len(matches) > 0 {
+						price := parseGermanAmount(matches[len(matches)-1][1])
+						if hasLandingKw {
+							lastItem.LandingFee += price
+							lastItem.Amount += price
+							log.Printf("[Parser] + Landegebühr (Keyword: %s): %.2f €", activeClub.LandingFeeKeyword, price)
+						} else if hasApproachKw {
+							lastItem.ApproachFee += price
+							lastItem.Amount += price
+							log.Printf("[Parser] + Anfluggebühr (Keyword: %s): %.2f €", activeClub.ApproachFeeKeyword, price)
+						}
 					}
+					continue
 				}
 			}
 
-			if isStandaloneFee && lastItem != nil && (lastItem.Date == dateMatch || dateMatch == "") && lastItem.AircraftRegistration == regMatch {
-				// Standalone Fee Row: Update last flight
-				matches := amountsRe.FindAllStringSubmatch(line, -1)
-				if len(matches) > 0 {
-					price := parseGermanAmount(matches[len(matches)-1][1])
-					if activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword)) {
-						lastItem.LandingFee += price
-						lastItem.Amount += price
-						log.Printf("[Parser] + Landegebühr (HB Style): %.2f €", price)
-					} else if activeClub.ApproachFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.ApproachFeeKeyword)) {
-						lastItem.ApproachFee += price
-						lastItem.Amount += price
-						log.Printf("[Parser] + Anfluggebühr (HB Style): %.2f €", price)
-					}
-				}
-				continue
-			}
-
-			// New Flight entry or Combined Row
+			// Otherwise, treat as New Flight or Combined Row
 			item := PDFLineItem{
 				Date:                 dateMatch,
 				AircraftRegistration: regMatch,
@@ -145,40 +138,35 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 				}
 			}
 
-			if activeClub != nil {
-				// 1. Flight Cost via Keyword (if explicitly present in line)
-				if activeClub.FlightAmountKeyword != "" && strings.Contains(line, activeClub.FlightAmountKeyword) {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d.,]+)`)
-					if m := re.FindStringSubmatch(line); len(m) > 1 {
-						item.FlightCost = parseGermanAmount(m[1])
-					}
+			// 1. Try to find values via explicit keywords in the line
+			if hasFlightKw {
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d.,]+)`)
+				if m := re.FindStringSubmatch(line); len(m) > 1 {
+					item.FlightCost = parseGermanAmount(m[1])
 				}
-				// 2. Landing Fee (inline)
-				if activeClub.LandingFeeKeyword != "" && strings.Contains(line, activeClub.LandingFeeKeyword) {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d.,]+)`)
-					if m := re.FindStringSubmatch(line); len(m) > 1 {
-						item.LandingFee = parseGermanAmount(m[1])
-					}
+			}
+			if hasLandingKw {
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d.,]+)`)
+				if m := re.FindStringSubmatch(line); len(m) > 1 {
+					item.LandingFee = parseGermanAmount(m[1])
 				}
-				// 3. Approach Fee (inline)
-				if activeClub.ApproachFeeKeyword != "" && strings.Contains(line, activeClub.ApproachFeeKeyword) {
-					re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d.,]+)`)
-					if m := re.FindStringSubmatch(line); len(m) > 1 {
-						item.ApproachFee = parseGermanAmount(m[1])
-					}
+			}
+			if hasApproachKw {
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d.,]+)`)
+				if m := re.FindStringSubmatch(line); len(m) > 1 {
+					item.ApproachFee = parseGermanAmount(m[1])
 				}
 			}
 
-			// Fallback for Flight Cost
+			// 2. Fallback for Table structures (Fly Linz style)
 			if item.FlightCost == 0 && len(extractedPrices) > 0 {
-				// Fly Linz Style detection: Many prices in one row
 				if len(extractedPrices) >= 3 {
-					// [Flight, Landing, Approach, ...]
+					// Multi-column row: [Flight, Landing, Approach, ...]
 					item.FlightCost = extractedPrices[0]
 					if item.LandingFee == 0 { item.LandingFee = extractedPrices[1] }
 					if item.ApproachFee == 0 { item.ApproachFee = extractedPrices[2] }
 				} else {
-					// HB Style or simple row: Take the last price
+					// Single price row
 					item.FlightCost = extractedPrices[len(extractedPrices)-1]
 				}
 			}
