@@ -22,9 +22,10 @@ frontend/node_modules/
 frontend/dist/
 
 # Aerobudget specific data directories
-data/
-db/
-invoices/
+data/*
+!data/.gitkeep
+data/invoices/*
+!data/invoices/.gitkeep
 *.db
 
 # macOS

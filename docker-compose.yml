@@ -5,12 +5,12 @@ services:
     ports:
       - "8011:8080"
     volumes:
-      # Mount the data directory to persist the SQLite database
-      - ./data:/app/data
-      # Mount the folder where you can drop PDF invoices for OCR processing
-      - ./data/invoices:/app/data/invoices
+      - aerobudget_data:/app/data
     restart: unless-stopped
     environment:
       - PORT=8080
       - DB_PATH=/app/data/aerobudget.db
       - INVOICE_WATCH_DIR=/app/data/invoices
+
+volumes:
+  aerobudget_data:
