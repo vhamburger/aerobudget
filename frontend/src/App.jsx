@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
@@ -176,9 +176,43 @@ function Dashboard({ stats, flights, theme }) {
 }
 
 function FlightTable({ flights }) {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredFlights = flights.filter(f => {
+    const s = searchTerm.toLowerCase();
+    const dateStr = formatDate(f.date).toLowerCase();
+    return (
+      f.aircraft.toLowerCase().includes(s) ||
+      dateStr.includes(s) ||
+      f.departure.toLowerCase().includes(s) ||
+      f.arrival.toLowerCase().includes(s) ||
+      (f.training_type || '').toLowerCase().includes(s)
+    );
+  });
+
   return (
     <div className="glass-panel">
-      <h2 style={{ marginBottom: 20 }}>Alle Flüge ({flights.length})</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 style={{ margin: 0 }}>Alle Flüge ({filteredFlights.length})</h2>
+        <div style={{ position: 'relative', width: '300px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+          <input 
+            placeholder="Suche (Datum, Kennzeichen, Ort...)" 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)}
+            className="input-field"
+            style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px' }}
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')} 
+              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
@@ -189,11 +223,17 @@ function FlightTable({ flights }) {
             </tr>
           </thead>
           <tbody>
-            {flights.map(f => (
+            {filteredFlights.length > 0 ? filteredFlights.map(f => (
               <tr key={f.id} style={{ borderBottom: '1px solid rgba(128,128,128,0.07)' }}>
                 <td style={{ padding: '12px' }}>{formatDate(f.date)}</td>
                 <td style={{ padding: '12px' }}>
-                  <span style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 4, padding: '2px 8px' }}>{f.aircraft}</span>
+                  <button 
+                    onClick={() => setSearchTerm(f.aircraft)}
+                    style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 4, padding: '2px 8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
+                    title={`Nur ${f.aircraft} anzeigen`}
+                  >
+                    {f.aircraft}
+                  </button>
                 </td>
                 <td style={{ padding: '12px' }}>{f.departure}</td>
                 <td style={{ padding: '12px' }}>{f.arrival}</td>
@@ -226,7 +266,14 @@ function FlightTable({ flights }) {
                   {!(f.landing_fee > 0 || f.approach_fee > 0) && <span style={{ opacity: 0.3 }}>—</span>}
                 </td>
               </tr>
-            ))}
+            )) : (
+              <tr>
+                <td colSpan="10" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <Search size={32} style={{ opacity: 0.1, marginBottom: 12 }} />
+                  <p>Keine Flüge gefunden</p>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -687,7 +734,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.0.37</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.1.0</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
