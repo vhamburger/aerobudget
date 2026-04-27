@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     invoice_number TEXT UNIQUE NOT NULL,
     date TEXT NOT NULL,
+    aircraft TEXT NOT NULL,
     amount REAL DEFAULT 0.0,
     processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

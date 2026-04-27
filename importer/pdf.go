@@ -3,6 +3,7 @@ package importer
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"time"
 )
 
-// PDFInvoice represents extracted data from a PDF invoice
 type PDFInvoice struct {
 	InvoiceNumber string
 	Date          string
@@ -25,7 +25,6 @@ type PDFLineItem struct {
 	Amount               float64
 }
 
-// ExtractText uses pdftotext (from poppler-utils) to extract text from a PDF file.
 func ExtractText(filePath string) (string, error) {
 	cmd := exec.Command("pdftotext", "-layout", filePath, "-")
 	var out bytes.Buffer
@@ -39,57 +38,76 @@ func ExtractText(filePath string) (string, error) {
 	return out.String(), nil
 }
 
-// ParseInvoiceText is a rudimentary parser that uses Regex to find dates, amounts, and aircrafts.
-// In a real scenario, this would be highly customized to the specific club's invoice layout.
-func ParseInvoiceText(text string) (PDFInvoice, error) {
+// ParseInvoiceText akzeptiert nun eine Liste bekannter Kennzeichen aus der DB
+func ParseInvoiceText(text string, knownAircraft []string) (PDFInvoice, error) {
 	inv := PDFInvoice{}
-	
-	// Example naive regex for Date (DD.MM.YYYY)
-	dateRe := regexp.MustCompile(`\b(\d{2}\.\d{2}\.\d{4})\b`)
-	if match := dateRe.FindStringSubmatch(text); len(match) > 1 {
-		inv.Date = match[1]
+	lines := strings.Split(text, "\n")
+
+	// 1. Dynamischen Regex für Kennzeichen erstellen
+	var aircraftRe *regexp.Regexp
+	if len(knownAircraft) > 0 {
+		// Erstellt ein Muster wie: (D-EXYZ|OE-ABC|D-EABC)
+		pattern := `\b(` + strings.Join(knownAircraft, "|") + `)\b`
+		aircraftRe = regexp.MustCompile(pattern)
+		log.Printf("[Parser] Suche gezielt nach %d bekannten Kennzeichen", len(knownAircraft))
 	} else {
-		inv.Date = time.Now().Format("02.01.2006")
+		// Fallback auf allgemeines Muster, falls DB leer ist
+		aircraftRe = regexp.MustCompile(`\b(D-[A-Z]{4}|OE-[A-Z]{3})\b`)
+		log.Println("[Parser] Keine bekannten Kennzeichen in DB gefunden. Nutze Standard-Muster.")
 	}
 
-	// Example naive regex for Invoice Number (Rechnungsnummer: 12345)
-	invNumRe := regexp.MustCompile(`(?i)Rechnungsnummer[\s:]*([A-Z0-9-]+)`)
+	// 2. Rechnungsnummer
+	invNumRe := regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No)[\s:]*([A-Z0-9-]+)`)
 	if match := invNumRe.FindStringSubmatch(text); len(match) > 1 {
 		inv.InvoiceNumber = strings.TrimSpace(match[1])
 	} else {
 		inv.InvoiceNumber = fmt.Sprintf("INV-%d", time.Now().Unix())
 	}
 
-	// Example naive regex for total amount
-	amountRe := regexp.MustCompile(`(?i)(?:Gesamtbetrag|Summe|Total)[\s:]*([\d,.]+)\s*(?:€|EUR)`)
-	if match := amountRe.FindStringSubmatch(text); len(match) > 1 {
-		valStr := strings.ReplaceAll(match[1], ".", "")
-		valStr = strings.ReplaceAll(valStr, ",", ".")
-		if val, err := strconv.ParseFloat(valStr, 64); err == nil {
-			inv.TotalAmount = val
-		}
+	// 3. Rechnungsdatum
+	dateRe := regexp.MustCompile(`\b(\d{2}\.\d{2}\.\d{4})\b`)
+	if match := dateRe.FindStringSubmatch(text); len(match) > 1 {
+		inv.Date = match[1]
 	}
 
-	// Example naive regex for finding a flight line item:
-	// Date | Aircraft | Minutes | Amount
-	// 01.05.2024 D-EXYZ 60 150,00
-	itemRe := regexp.MustCompile(`\b(\d{2}\.\d{2}\.\d{4})\s+([D]-[A-Z]{4})\s+(\d+)\s+([\d,.]+)\b`)
-	matches := itemRe.FindAllStringSubmatch(text, -1)
-	for _, match := range matches {
-		if len(match) == 5 {
-			valStr := strings.ReplaceAll(match[4], ".", "")
-			valStr = strings.ReplaceAll(valStr, ",", ".")
-			amount, _ := strconv.ParseFloat(valStr, 64)
-			minutes, _ := strconv.Atoi(match[3])
-			
+	// 4. Gesamtbetrag
+	amountRe := regexp.MustCompile(`(?i)(?:Gesamtbetrag|Summe|Total|Endbetrag)[\s:]*([\d,.]+)\s*(?:€|EUR)`)
+	if match := amountRe.FindStringSubmatch(text); len(match) > 1 {
+		inv.TotalAmount = parseGermanAmount(match[1])
+	}
+
+	// 5. Zeilenweise Extraktion
+	itemDateRe := regexp.MustCompile(`(\d{2}\.\d{2}\.\d{4})`)
+
+	for _, line := range lines {
+		regMatch := aircraftRe.FindString(line)
+		dateMatch := itemDateRe.FindString(line)
+
+		if regMatch != "" && dateMatch != "" {
+			// Suche nach dem Betrag (oft am Zeilenende)
+			priceRe := regexp.MustCompile(`([\d,.]+)\s*$`)
+			priceMatch := priceRe.FindStringSubmatch(strings.TrimSpace(line))
+
+			var price float64
+			if len(priceMatch) > 1 {
+				price = parseGermanAmount(priceMatch[1])
+			}
+
 			inv.LineItems = append(inv.LineItems, PDFLineItem{
-				Date:                 match[1],
-				AircraftRegistration: match[2],
-				Minutes:              minutes,
-				Amount:               amount,
+				Date:                 dateMatch,
+				AircraftRegistration: regMatch,
+				Amount:               price,
 			})
+			log.Printf("[Parser] Treffer: %s am %s (%.2f €)", regMatch, dateMatch, price)
 		}
 	}
 
 	return inv, nil
+}
+
+func parseGermanAmount(s string) float64 {
+	s = strings.ReplaceAll(s, ".", "")
+	s = strings.ReplaceAll(s, ",", ".")
+	val, _ := strconv.ParseFloat(s, 64)
+	return val
 }
