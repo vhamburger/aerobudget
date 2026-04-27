@@ -14,6 +14,9 @@ type Flight struct {
 	FlightRule    string    `json:"flight_rule" db:"flight_rule"`
 	Pilot         string    `json:"pilot" db:"pilot"`
 	Cost          float64   `json:"cost" db:"cost"`
+	FlightCost    float64   `json:"flight_cost" db:"flight_cost"`
+	LandingFee    float64   `json:"landing_fee" db:"landing_fee"`
+	ApproachFee   float64   `json:"approach_fee" db:"approach_fee"`
 	InvoiceID     *int      `json:"invoice_id" db:"invoice_id"`
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
 }
@@ -27,9 +30,13 @@ type Invoice struct {
 }
 
 type Club struct {
-	ID          int    `json:"id" db:"id"`
-	Name        string `json:"name" db:"name"`
-	BillingType string `json:"billing_type" db:"billing_type"`
+	ID                  int    `json:"id" db:"id"`
+	Name                string `json:"name" db:"name"`
+	SearchTerm          string `json:"search_term" db:"search_term"`
+	Heuristic           string `json:"heuristic" db:"heuristic"` // 'highest_value', 'last_column', 'pattern'
+	FlightAmountKeyword string `json:"flight_amount_keyword" db:"flight_amount_keyword"`
+	LandingFeeKeyword   string `json:"landing_fee_keyword" db:"landing_fee_keyword"`
+	ApproachFeeKeyword  string `json:"approach_fee_keyword" db:"approach_fee_keyword"`
 }
 
 type Training struct {

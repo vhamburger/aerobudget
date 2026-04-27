@@ -38,6 +38,14 @@ func InitDB(dbPath string) error {
 	migrations := []string{
 		`ALTER TABLE flights ADD COLUMN flight_rule TEXT DEFAULT 'VFR'`,
 		`ALTER TABLE flights ADD COLUMN training_type TEXT DEFAULT ''`,
+		`ALTER TABLE clubs ADD COLUMN search_term TEXT DEFAULT ''`,
+		`ALTER TABLE clubs ADD COLUMN heuristic TEXT DEFAULT 'highest_value'`,
+		`ALTER TABLE clubs ADD COLUMN flight_amount_keyword TEXT DEFAULT ''`,
+		`ALTER TABLE clubs ADD COLUMN landing_fee_keyword TEXT DEFAULT ''`,
+		`ALTER TABLE clubs ADD COLUMN approach_fee_keyword TEXT DEFAULT ''`,
+		`ALTER TABLE flights ADD COLUMN flight_cost REAL DEFAULT 0.0`,
+		`ALTER TABLE flights ADD COLUMN landing_fee REAL DEFAULT 0.0`,
+		`ALTER TABLE flights ADD COLUMN approach_fee REAL DEFAULT 0.0`,
 	}
 	for _, m := range migrations {
 		if _, err := DB.Exec(m); err != nil {

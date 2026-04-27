@@ -10,6 +10,9 @@ CREATE TABLE IF NOT EXISTS flights (
     flight_rule TEXT DEFAULT 'VFR',
     pilot TEXT,
     cost REAL DEFAULT 0.0,
+    flight_cost REAL DEFAULT 0.0,
+    landing_fee REAL DEFAULT 0.0,
+    approach_fee REAL DEFAULT 0.0,
     invoice_id INTEGER DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -26,7 +29,11 @@ CREATE TABLE IF NOT EXISTS invoices (
 CREATE TABLE IF NOT EXISTS clubs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    billing_type TEXT DEFAULT 'flight_time' -- 'flight_time', 'block_time', 'custom'
+    search_term TEXT DEFAULT '',
+    heuristic TEXT DEFAULT 'highest_value',
+    flight_amount_keyword TEXT DEFAULT '',
+    landing_fee_keyword TEXT DEFAULT '',
+    approach_fee_keyword TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS trainings (

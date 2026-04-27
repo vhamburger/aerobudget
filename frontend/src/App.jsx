@@ -180,7 +180,7 @@ function FlightTable({ flights }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
-              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten'].map(h => (
+              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten', 'Details'].map(h => (
                 <th key={h} style={{ padding: '12px', textAlign: 'left', color: 'var(--text-secondary)' }}>{h}</th>
               ))}
             </tr>
@@ -208,11 +208,19 @@ function FlightTable({ flights }) {
                 </td>
                 <td style={{ padding: '12px' }}>
                   {f.cost > 0 ? (
-                    <span style={{ color: '#4ade80' }}>{formatCurrency(f.cost)}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
+                      {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Flug: {formatCurrency(f.flight_cost)}</span>}
+                    </div>
                   ) : (
                     <span style={{ color: 'var(--text-secondary)' }}>—</span>
                   )}
                   {f.invoice_id && <FileText size={12} style={{ marginLeft: 6, opacity: 0.5 }} title="Rechnung verknüpft" />}
+                </td>
+                <td style={{ padding: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                  {f.landing_fee > 0 && <div>Ldg: {formatCurrency(f.landing_fee)}</div>}
+                  {f.approach_fee > 0 && <div>ACG: {formatCurrency(f.approach_fee)}</div>}
+                  {!(f.landing_fee > 0 || f.approach_fee > 0) && <span style={{ opacity: 0.3 }}>—</span>}
                 </td>
               </tr>
             ))}
@@ -226,7 +234,8 @@ function FlightTable({ flights }) {
 function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
-  const [newClub, setNewClub] = useState({ name: '', billing_type: 'highest_value' });
+  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '' });
+  const [editingClub, setEditingClub] = useState(null);
   const [trainings, setTrainings] = useState([]);
   const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
   const [templates, setTemplates] = useState([]);
@@ -248,18 +257,24 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const addClub = async (e) => {
     e.preventDefault();
     if (!newClub.name) return;
-    await fetch(`${API}/api/clubs`, {
-      method: 'POST',
+    const isEdit = !!editingClub;
+    const url = isEdit ? `${API}/api/clubs/${editingClub.id}` : `${API}/api/clubs`;
+    const method = isEdit ? 'PUT' : 'POST';
+
+    await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClub)
     });
-    setNewClub({ name: '', billing_type: 'highest_value' });
-    loadClubs();
+    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '' });
+    setEditingClub(null);
+    loadData();
   };
 
   const deleteClub = async (id) => {
+    if (!confirm('Verein wirklich löschen?')) return;
     await fetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
-    loadClubs();
+    loadData();
   };
 
   const triggerReconcile = async () => {
@@ -277,7 +292,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
             <Database size={14} style={{ marginRight: 8 }} /> Datenverwaltung
           </button>
           <button onClick={() => setSubTab('clubs')} className="nav-btn" style={{ background: subTab === 'clubs' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'clubs' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <Building2 size={14} style={{ marginRight: 8 }} /> Vereine & Heuristik
+            <Building2 size={14} style={{ marginRight: 8 }} /> Vereine & Aufschlüsselung
           </button>
           <button onClick={() => setSubTab('trainings')} className="nav-btn" style={{ background: subTab === 'trainings' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'trainings' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
             <GraduationCap size={14} style={{ marginRight: 8 }} /> Ausbildungen
@@ -327,42 +342,76 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
 
         {subTab === 'clubs' && (
           <div>
-            <h2>Vereins-Templates</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Lege fest, wie Rechnungen pro Verein geparst werden.</p>
+            <h2>Vereine & Aufschlüsselung</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Lege fest, wie Rechnungen pro Verein geparst und Kosten aufgeteilt werden.</p>
 
-            <form onSubmit={addClub} style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-              <input
-                placeholder="Vereinsname (z.B. FlyLinz)"
-                value={newClub.name}
-                onChange={e => setNewClub({ ...newClub, name: e.target.value })}
-                style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '8px', borderRadius: '6px' }}
-              />
-              <select
-                value={newClub.billing_type}
-                onChange={e => setNewClub({ ...newClub, billing_type: e.target.value })}
-                style={{ background: '#1e293b', color: 'white', padding: '8px', borderRadius: '6px' }}
-              >
-                <option value="highest_value">Höchster Wert (Total)</option>
-                <option value="last_column">Letzte Spalte</option>
-                <option value="default">Standard</option>
-              </select>
-              <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white' }}>Hinzufügen</button>
+            <form onSubmit={addClub} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px', background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px' }}>
+              <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Vereinsname</label>
+                  <input placeholder="z.B. FlyLinz" value={newClub.name} onChange={e => setNewClub({ ...newClub, name: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Suchbegriff in PDF</label>
+                  <input placeholder="z.B. Fly Linz GmbH" value={newClub.search_term} onChange={e => setNewClub({ ...newClub, search_term: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Heuristik (Betrags-Wahl)</label>
+                <select value={newClub.heuristic} onChange={e => setNewClub({ ...newClub, heuristic: e.target.value })} className="input-field" style={{ width: '100%' }}>
+                  <option value="highest_value">Höchster Wert</option>
+                  <option value="last_column">Letzte Spalte</option>
+                </select>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Flugkosten (FlyLinz)</label>
+                  <input placeholder="z.B. Betrag" value={newClub.flight_amount_keyword} onChange={e => setNewClub({ ...newClub, flight_amount_keyword: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Landegebühr</label>
+                  <input placeholder="z.B. Landegebühr" value={newClub.landing_fee_keyword} onChange={e => setNewClub({ ...newClub, landing_fee_keyword: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Anfluggebühr</label>
+                  <input placeholder="z.B. ACG" value={newClub.approach_fee_keyword} onChange={e => setNewClub({ ...newClub, approach_fee_keyword: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                </div>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px' }}>
+                <button type="submit" className="nav-btn" style={{ background: '#38bdf8', color: 'white', flex: 1 }}>
+                  {editingClub ? 'Verein aktualisieren' : 'Verein Hinzufügen'}
+                </button>
+                {editingClub && (
+                  <button type="button" onClick={() => { setEditingClub(null); setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '' }); }} className="nav-btn" style={{ background: 'rgba(255,255,255,0.1)' }}>Abbrechen</button>
+                )}
+              </div>
             </form>
 
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
-                  <th style={{ padding: '12px' }}>Name</th>
-                  <th style={{ padding: '12px' }}>Heuristik</th>
+                  <th style={{ padding: '12px' }}>Verein / Suchbegriff</th>
+                  <th style={{ padding: '12px' }}>Aufschlüsselung</th>
                   <th style={{ padding: '12px' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {clubs.map(c => (
                   <tr key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <td style={{ padding: '12px' }}><strong>{c.name}</strong></td>
-                    <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>{c.billing_type}</td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px' }}>
+                      <strong>{c.name}</strong><br/>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>PDF: {c.search_term || '—'}</span>
+                    </td>
+                    <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                      Heuristik: {c.heuristic}<br/>
+                      {c.landing_fee_keyword && `Ldg: "${c.landing_fee_keyword}" `}
+                      {c.approach_fee_keyword && `ACG: "${c.approach_fee_keyword}"`}
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'right', verticalAlign: 'middle' }}>
+                      <button onClick={() => { setEditingClub(c); setNewClub(c); }} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginRight: 8 }}><Edit2 size={16} /></button>
                       <button onClick={() => deleteClub(c.id)} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
                     </td>
                   </tr>

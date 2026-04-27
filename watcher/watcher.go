@@ -10,6 +10,7 @@ import (
 
 	"github.com/aerobudget/aerobudget/db"
 	"github.com/aerobudget/aerobudget/importer"
+	"github.com/aerobudget/aerobudget/models"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -60,8 +61,8 @@ func processNewInvoice(filePath string) {
 	}
 
 	// 1.5 Vereins-Konfigurationen laden
-	var clubs []importer.ClubConfig
-	err = db.DB.Select(&clubs, `SELECT name, billing_type FROM clubs`)
+	var clubs []models.Club
+	err = db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword FROM clubs`)
 	if err != nil {
 		log.Printf("[Watcher] Fehler beim Abrufen der Vereine: %v", err)
 	}
@@ -111,7 +112,7 @@ func processNewInvoice(filePath string) {
 	matches := 0
 	matchedFlightIDs := make(map[int]bool)
 	for _, item := range invoice.LineItems {
-		if flightID, err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item.Amount, int(invoiceID), matchedFlightIDs); err == nil {
+		if flightID, err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item, int(invoiceID), matchedFlightIDs); err == nil {
 			matches++
 			matchedFlightIDs[flightID] = true
 		}
@@ -121,7 +122,7 @@ func processNewInvoice(filePath string) {
 }
 
 // MatchInvoiceToFlight führt das eigentliche SQL-Update durch
-func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID int, matchedFlightIDs map[int]bool) (int, error) {
+func MatchInvoiceToFlight(date string, aircraft string, item importer.PDFLineItem, invoiceID int, matchedFlightIDs map[int]bool) (int, error) {
 	// Konvertiere PDF Datum (DD.MM.YYYY) zu DB Datum (YYYY-MM-DD)
 	dbDate := date
 	if parts := strings.Split(date, "."); len(parts) == 3 {
@@ -156,7 +157,8 @@ func MatchInvoiceToFlight(date string, aircraft string, cost float64, invoiceID 
 		return 0, err
 	}
 
-	_, err = db.DB.Exec(`UPDATE flights SET cost = ?, invoice_id = ? WHERE id = ?`, cost, invoiceID, flightID)
+	_, err = db.DB.Exec(`UPDATE flights SET cost = ?, flight_cost = ?, landing_fee = ?, approach_fee = ?, invoice_id = ? WHERE id = ?`, 
+		item.Amount, item.FlightCost, item.LandingFee, item.ApproachFee, invoiceID, flightID)
 	if err != nil {
 		return 0, err
 	}

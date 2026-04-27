@@ -197,21 +197,48 @@ func main() {
 		json.NewEncoder(w).Encode(clubs)
 	})
 
-	r.Post("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
-		var club struct {
-			Name        string `json:"name"`
-			BillingType string `json:"billing_type"`
+	// --- CLUBS API ---
+	r.Get("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
+		var clubs []models.Club
+		err := db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword FROM clubs ORDER BY name ASC`)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
 		}
+		if clubs == nil { clubs = []models.Club{} }
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(clubs)
+	})
+
+	r.Post("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
+		var club models.Club
 		if err := json.NewDecoder(r.Body).Decode(&club); err != nil {
 			http.Error(w, "Invalid club data", 400)
 			return
 		}
-		_, err := db.DB.Exec(`INSERT INTO clubs (name, billing_type) VALUES (?, ?)`, club.Name, club.BillingType)
+		_, err := db.DB.Exec(`INSERT INTO clubs (name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword) VALUES (?, ?, ?, ?, ?, ?)`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword)
 		if err != nil {
-			http.Error(w, err.Error(), 400)
+			http.Error(w, err.Error(), 500)
 			return
 		}
 		w.WriteHeader(201)
+	})
+
+	r.Put("/api/clubs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		var club models.Club
+		if err := json.NewDecoder(r.Body).Decode(&club); err != nil {
+			http.Error(w, "Invalid club data", 400)
+			return
+		}
+		_, err := db.DB.Exec(`UPDATE clubs SET name=?, search_term=?, heuristic=?, flight_amount_keyword=?, landing_fee_keyword=?, approach_fee_keyword=? WHERE id=?`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, id)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(200)
 	})
 
 	r.Delete("/api/clubs/{id}", func(w http.ResponseWriter, r *http.Request) {
