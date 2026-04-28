@@ -39,6 +39,7 @@ type Club struct {
 	LandingFeeKeyword   string `json:"landing_fee_keyword" db:"landing_fee_keyword"`
 	ApproachFeeKeyword  string `json:"approach_fee_keyword" db:"approach_fee_keyword"`
 	InvoiceNumberKeyword string `json:"invoice_number_keyword" db:"invoice_number_keyword"`
+	InvoiceNumberNumericOnly bool `json:"invoice_number_numeric_only" db:"invoice_number_numeric_only"`
 }
 
 type Training struct {

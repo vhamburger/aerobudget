@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS clubs (
     flight_amount_keyword TEXT DEFAULT '',
     landing_fee_keyword TEXT DEFAULT '',
     approach_fee_keyword TEXT DEFAULT '',
-    invoice_number_keyword TEXT DEFAULT ''
+    invoice_number_keyword TEXT DEFAULT '',
+    invoice_number_numeric_only INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS trainings (

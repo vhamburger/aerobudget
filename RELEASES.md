@@ -1,5 +1,10 @@
 # Aerobudget Release Notes
 
+## [1.2.4] - 2026-04-28
+### Added
+- **Numeric Only Option**: New setting for clubs to restrict invoice number extraction to digits only.
+- **Word Boundaries**: Improved parser regex to prevent matching keywords inside other words (e.g., "Abrechnung").
+
 ## [1.2.3] - 2026-04-28
 ### Fixed
 - **Invoice Number Extraction**: Added blacklist for "QR-Code" and "IBAN" to prevent multiple invoices being merged under the same ID.

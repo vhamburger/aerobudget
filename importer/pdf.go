@@ -69,16 +69,22 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 
 	// Invoice Number
 	var invNumRe *regexp.Regexp
+	valuePattern := `([A-Z0-9-/]+)`
+	if activeClub != nil && activeClub.InvoiceNumberNumericOnly {
+		valuePattern = `([0-9]+)`
+	}
+
 	if activeClub != nil && activeClub.InvoiceNumberKeyword != "" {
-		invNumRe = regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.InvoiceNumberKeyword) + `[\s:]*([A-Z0-9-/]+)`)
+		invNumRe = regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(activeClub.InvoiceNumberKeyword) + `\b[\s:]*` + valuePattern)
 	} else {
-		invNumRe = regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)[\s:]*([A-Z0-9-/]+)`)
+		invNumRe = regexp.MustCompile(`(?i)\b(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)\b[\s:]*` + valuePattern)
 	}
 
 	if matches := invNumRe.FindAllStringSubmatch(text, -1); len(matches) > 0 {
 		for _, m := range matches {
 			val := strings.TrimSpace(m[1])
 			valLower := strings.ToLower(val)
+			// Ignore false positives
 			if valLower != "qr-code" && valLower != "iban" && len(val) > 2 {
 				inv.InvoiceNumber = val
 				db.Log(fmt.Sprintf("[Parser] Rechnungsnummer extrahiert: %s", inv.InvoiceNumber), false)

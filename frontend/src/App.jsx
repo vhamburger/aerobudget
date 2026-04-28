@@ -401,7 +401,7 @@ function ForecastView() {
 function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
-  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '' });
+  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
   const [editingClub, setEditingClub] = useState(null);
   const [trainings, setTrainings] = useState([]);
   const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
@@ -436,7 +436,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClub)
     });
-    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '' });
+    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
     setEditingClub(null);
     loadData();
   };
@@ -573,6 +573,13 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                   <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Anfluggebühr</label>
                   <input placeholder="z.B. ACG" value={newClub.approach_fee_keyword} onChange={e => setNewClub({ ...newClub, approach_fee_keyword: e.target.value })} className="input-field" style={{ width: '100%' }} />
                 </div>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1', marginTop: '-4px', marginBottom: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', opacity: 0.7, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newClub.invoice_number_numeric_only} onChange={e => setNewClub({...newClub, invoice_number_numeric_only: e.target.checked})} style={{ marginRight: 8 }} />
+                  Rechnungsnummer besteht nur aus Zahlen (ignoriert Sonderzeichen wie #)
+                </label>
               </div>
 
               <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px' }}>
@@ -913,7 +920,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.2.3</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.2.4</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>

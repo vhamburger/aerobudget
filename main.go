@@ -20,7 +20,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.2.3"
+const AppVersion = "1.2.4"
 
 func main() {
 	log.Printf("=========================================")
@@ -196,7 +196,7 @@ func main() {
 	// --- CLUBS API ---
 	r.Get("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
 		var clubs []models.Club
-		err := db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword FROM clubs ORDER BY name ASC`)
+		err := db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only FROM clubs ORDER BY name ASC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -212,8 +212,8 @@ func main() {
 			http.Error(w, "Invalid club data", 400)
 			return
 		}
-		_, err := db.DB.Exec(`INSERT INTO clubs (name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword) VALUES (?, ?, ?, ?, ?, ?, ?)`, 
-			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword)
+		_, err := db.DB.Exec(`INSERT INTO clubs (name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -228,8 +228,8 @@ func main() {
 			http.Error(w, "Invalid club data", 400)
 			return
 		}
-		_, err := db.DB.Exec(`UPDATE clubs SET name = ?, search_term = ?, heuristic = ?, flight_amount_keyword = ?, landing_fee_keyword = ?, approach_fee_keyword = ?, invoice_number_keyword = ? WHERE id = ?`, 
-			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, id)
+		_, err := db.DB.Exec(`UPDATE clubs SET name = ?, search_term = ?, heuristic = ?, flight_amount_keyword = ?, landing_fee_keyword = ?, approach_fee_keyword = ?, invoice_number_keyword = ?, invoice_number_numeric_only = ? WHERE id = ?`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly, id)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
