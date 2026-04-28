@@ -1,5 +1,10 @@
 # Aerobudget Release Notes
 
+## [1.2.3] - 2026-04-28
+### Fixed
+- **Invoice Number Extraction**: Added blacklist for "QR-Code" and "IBAN" to prevent multiple invoices being merged under the same ID.
+- **Parser Robustness**: Now searches for multiple matches if the first one is invalid.
+
 ## [1.2.2] - 2026-04-28
 ### Added
 - **Debug Mode**: Configurable logging level in Settings -> Advanced.
@@ -13,7 +18,7 @@
 ## [1.2.1] - 2026-04-28 (Internal/Fix)
 ### Fixed
 - **DB Migration**: Added `file_path` column to existing databases automatically.
-- **Version String**: Fixed frontend showing v1.1.0 instead of v1.2.0.
+- **Version String**: Fixed frontend showing v1.1.0 instead of v1.2.3.
 
 ## [1.2.0] - 2026-04-28
 ### Added

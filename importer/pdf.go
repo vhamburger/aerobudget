@@ -75,12 +75,21 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 		invNumRe = regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)[\s:]*([A-Z0-9-/]+)`)
 	}
 
-	if match := invNumRe.FindStringSubmatch(text); len(match) > 1 {
-		inv.InvoiceNumber = strings.TrimSpace(match[1])
-		db.Log(fmt.Sprintf("[Parser] Rechnungsnummer extrahiert: %s", inv.InvoiceNumber), false)
-	} else {
+	if matches := invNumRe.FindAllStringSubmatch(text, -1); len(matches) > 0 {
+		for _, m := range matches {
+			val := strings.TrimSpace(m[1])
+			valLower := strings.ToLower(val)
+			if valLower != "qr-code" && valLower != "iban" && len(val) > 2 {
+				inv.InvoiceNumber = val
+				db.Log(fmt.Sprintf("[Parser] Rechnungsnummer extrahiert: %s", inv.InvoiceNumber), false)
+				break
+			}
+		}
+	}
+	
+	if inv.InvoiceNumber == "" {
 		inv.InvoiceNumber = fmt.Sprintf("INV-%s-%d", fallbackName, time.Now().UnixNano())
-		db.Log(fmt.Sprintf("[Parser] KEINE Rechnungsnummer gefunden, verwende Fallback: %s", inv.InvoiceNumber), true)
+		db.Log(fmt.Sprintf("[Parser] KEINE valide Rechnungsnummer gefunden, verwende Fallback: %s", inv.InvoiceNumber), true)
 	}
 
 	// Invoice Date
