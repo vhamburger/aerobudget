@@ -51,7 +51,7 @@ func Watch(dir string) error {
 }
 
 func processNewInvoice(filePath string) {
-	log.Printf("[Watcher] === Verarbeite Datei: %s ===", filepath.Base(filePath))
+	db.Log(fmt.Sprintf("[Watcher] === Verarbeite Datei: %s ===", filepath.Base(filePath)), false)
 
 	// 1. Bekannte Kennzeichen aus dem Flugbuch laden
 	var knownAircraft []string
@@ -102,10 +102,10 @@ func processNewInvoice(filePath string) {
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected > 0 {
 		invoiceID, _ = res.LastInsertId()
-		log.Printf("[Watcher] Rechnung %s neu angelegt.", invoice.InvoiceNumber)
+		db.Log(fmt.Sprintf("[Watcher] Rechnung %s neu angelegt (ID: %d).", invoice.InvoiceNumber, invoiceID), false)
 	} else {
 		db.DB.Get(&invoiceID, "SELECT id FROM invoices WHERE invoice_number = ?", invoice.InvoiceNumber)
-		log.Printf("[Watcher] Rechnung %s existiert bereits.", invoice.InvoiceNumber)
+		db.Log(fmt.Sprintf("[Watcher] Rechnung %s existiert bereits (ID: %d).", invoice.InvoiceNumber, invoiceID), true)
 	}
 
 	// 4. Matching der Einzelposten gegen bestehende Flüge
@@ -152,7 +152,7 @@ func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineIt
 
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Printf("[Matcher] Kein Flug für %s am %s", aircraft, dbDate)
+			db.Log(fmt.Sprintf("[Matcher] KEIN passender Flug für %s am %s gefunden.", aircraft, dbDate), true)
 		}
 		return 0, err
 	}
@@ -163,7 +163,7 @@ func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineIt
 		return 0, err
 	}
 
-	log.Printf("[Matcher] Flug %d erfolgreich verknüpft.", flightID)
+	db.Log(fmt.Sprintf("[Matcher] Flug %d (%s, %s) erfolgreich mit Rechnung %d verknüpft.", flightID, aircraft, dbDate, invoiceID), false)
 	return flightID, nil
 }
 

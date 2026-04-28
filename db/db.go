@@ -16,6 +16,8 @@ import (
 var schema string
 
 var DB *sqlx.DB
+var DebugMode bool = false
+var GlobalLogLevel string = "INFO"
 
 // InitDB initializes the SQLite database
 func InitDB(dbPath string) error {
@@ -77,6 +79,23 @@ func InitDB(dbPath string) error {
 			VALUES ('Generic', ';', 1, '02.01.2006', 0, 1, 2, 3, 4, 5, 6, -1, -1, 0)`)
 	}
 
+	// Initialize DebugMode from DB
+	var dbMode string
+	DB.Get(&dbMode, `SELECT value FROM settings WHERE key = 'debug_mode'`)
+	if dbMode == "" {
+		DB.Exec(`INSERT INTO settings (key, value) VALUES ('debug_mode', 'false')`)
+	}
+	DebugMode = (dbMode == "true")
+
 	log.Println("Database initialized successfully.")
 	return nil
+}
+
+func Log(msg string, isDebug bool) {
+	if isDebug && !DebugMode {
+		return
+	}
+	prefix := "[INFO]"
+	if isDebug { prefix = "[DEBUG]" }
+	log.Printf("%s %s", prefix, msg)
 }

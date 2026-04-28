@@ -63,5 +63,10 @@ CREATE TABLE IF NOT EXISTS csv_templates (
     is_default INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+);
+
 -- Column migrations for existing databases
 -- These will fail silently if columns already exist

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/aerobudget/aerobudget/db"
 	"github.com/aerobudget/aerobudget/models"
 )
 
@@ -52,7 +53,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 	for _, c := range clubs {
 		if strings.Contains(text, c.SearchTerm) || strings.Contains(text, c.Name) {
 			activeClub = &c
-			log.Printf("[Parser] Verein erkannt: %s (Heuristik: %s)", c.Name, c.Heuristic)
+			db.Log(fmt.Sprintf("[Parser] Verein erkannt: %s (Heuristik: %s)", c.Name, c.Heuristic), false)
 			break
 		}
 	}
@@ -76,8 +77,10 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 
 	if match := invNumRe.FindStringSubmatch(text); len(match) > 1 {
 		inv.InvoiceNumber = strings.TrimSpace(match[1])
+		db.Log(fmt.Sprintf("[Parser] Rechnungsnummer extrahiert: %s", inv.InvoiceNumber), false)
 	} else {
 		inv.InvoiceNumber = fmt.Sprintf("INV-%s-%d", fallbackName, time.Now().UnixNano())
+		db.Log(fmt.Sprintf("[Parser] KEINE Rechnungsnummer gefunden, verwende Fallback: %s", inv.InvoiceNumber), true)
 	}
 
 	// Invoice Date

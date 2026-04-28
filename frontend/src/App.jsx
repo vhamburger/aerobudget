@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
@@ -407,16 +407,19 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
   const [templates, setTemplates] = useState([]);
   const [newTemplate, setNewTemplate] = useState({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
+  const [appSettings, setAppSettings] = useState({});
 
   const loadData = async () => {
-    const [c, t, tmpl] = await Promise.all([
+    const [c, t, tmpl, s] = await Promise.all([
       fetch(`${API}/api/clubs`),
       fetch(`${API}/api/trainings`),
-      fetch(`${API}/api/csv-templates`)
+      fetch(`${API}/api/csv-templates`),
+      fetch(`${API}/api/settings`)
     ]);
     setClubs(await c.json());
     setTrainings(await t.json());
     setTemplates(await tmpl.json());
+    setAppSettings(await s.json());
   };
 
   useEffect(() => { loadData(); }, []);
@@ -457,6 +460,15 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
     window.location.reload();
   };
 
+  const updateSetting = async (key, value) => {
+    await fetch(`${API}/api/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    });
+    loadData();
+  };
+
   return (
     <div className="dashboard-grid" style={{ gridTemplateColumns: '260px 1fr' }}>
       <div className="glass-panel" style={{ height: 'fit-content' }}>
@@ -473,6 +485,9 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
           </button>
           <button onClick={() => setSubTab('templates')} className="nav-btn" style={{ background: subTab === 'templates' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'templates' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
             <FileSpreadsheet size={14} style={{ marginRight: 8 }} /> CSV Import Formate
+          </button>
+          <button onClick={() => setSubTab('advanced')} className="nav-btn" style={{ background: subTab === 'advanced' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'advanced' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
+            <Sliders size={14} style={{ marginRight: 8 }} /> Erweitert
           </button>
         </div>
       </div>
@@ -732,6 +747,34 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {subTab === 'advanced' && (
+          <div>
+            <h2 style={{ marginBottom: 24 }}>Systemeinstellungen</h2>
+            <div className="glass-panel" style={{ background: 'rgba(255,255,255,0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1rem' }}>Debug Modus</h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', opacity: 0.5 }}>Erhöht die Detailtiefe der Logs (Parser, Matching, Dateinamen).</p>
+                </div>
+                <button 
+                  onClick={() => updateSetting('debug_mode', appSettings.debug_mode === 'true' ? 'false' : 'true')}
+                  className="nav-btn"
+                  style={{ 
+                    background: appSettings.debug_mode === 'true' ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.05)',
+                    color: appSettings.debug_mode === 'true' ? '#38bdf8' : 'inherit',
+                    padding: '8px 16px'
+                  }}
+                >
+                  {appSettings.debug_mode === 'true' ? 'AKTIVIERT' : 'DEAKTIVIERT'}
+                </button>
+              </div>
+            </div>
+            <div style={{ marginTop: 24, fontSize: '0.8rem', opacity: 0.3, fontStyle: 'italic' }}>
+              Die Logs können über die Container-Konsole (z.B. in Portainer) eingesehen werden.
+            </div>
           </div>
         )}
       </div>

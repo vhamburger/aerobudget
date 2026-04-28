@@ -405,6 +405,32 @@ func main() {
 		w.WriteHeader(200)
 	})
 
+	// --- SETTINGS ---
+	r.Get("/api/settings", func(w http.ResponseWriter, r *http.Request) {
+		settings := make(map[string]string)
+		rows, _ := db.DB.Query(`SELECT key, value FROM settings`)
+		for rows.Next() {
+			var k, v string
+			rows.Scan(&k, &v)
+			settings[k] = v
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(settings)
+	})
+
+	r.Post("/api/settings", func(w http.ResponseWriter, r *http.Request) {
+		var s struct {
+			Key   string `json:"key"`
+			Value string `json:"value"`
+		}
+		json.NewDecoder(r.Body).Decode(&s)
+		db.DB.Exec(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`, s.Key, s.Value)
+		if s.Key == "debug_mode" {
+			db.DebugMode = (s.Value == "true")
+		}
+		w.WriteHeader(200)
+	})
+
 	// --- INVOICES PDF SERVING ---
 	r.Get("/api/invoices/{id}/pdf", func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
