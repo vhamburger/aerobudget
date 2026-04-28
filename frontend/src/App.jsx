@@ -946,7 +946,7 @@ function ImportView({ onImported }) {
 
 function App() {
   const [theme, setTheme] = useTheme();
-  const [view, setView] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1009,6 +1009,11 @@ function App() {
     if (token && user) loadData();
   }, [token, user]);
 
+  const [clubs, setClubs] = useState([]);
+  const [trainings, setTrainings] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [settings, setSettings] = useState({});
+
   const [selectedIds, setSelectedIds] = useState([]);
 
   const batchDelete = async () => {
@@ -1036,8 +1041,8 @@ function App() {
   };
 
   useEffect(() => {
-    if (view === 'settings' && token && user) loadSettingsData();
-  }, [view, token, user]);
+    if (activeTab === 'settings' && token && user) loadSettingsData();
+  }, [activeTab, token, user]);
 
   const saveClub = async (club) => {
     const url = club.id ? `${API}/api/clubs/${club.id}` : `${API}/api/clubs`;
@@ -1094,13 +1099,13 @@ function App() {
       }} />}
       
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
-        <button onClick={() => setView('dashboard')} className="nav-btn" style={{ background: view === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
+        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
           <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
         </button>
-        <button onClick={() => setView('flights')} className="nav-btn" style={{ background: view === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
+        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Database size={16} style={{ marginRight: 8 }} /> Flugbuch
         </button>
-        <button onClick={() => setView('settings')} className="nav-btn" style={{ background: view === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
+        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
         </button>
         <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
