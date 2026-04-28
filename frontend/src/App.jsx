@@ -270,10 +270,22 @@ function Dashboard({ stats, flights, theme }) {
   );
 }
 
-function FlightTable({ flights }) {
+function FlightTable({ flights, authFetch }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  const handleExport = async () => {
+    const res = await authFetch(`${API}/api/export/flights`);
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aerobudget_flights_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const filteredFlights = flights.filter(f => {
     const s = searchTerm.toLowerCase();
@@ -321,9 +333,9 @@ function FlightTable({ flights }) {
             )}
           </div>
 
-          <a href={`${API}/api/export/flights`} className="nav-btn" style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8' }}>
+          <button onClick={handleExport} className="nav-btn" style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8', border: 'none', cursor: 'pointer' }}>
             <FileSpreadsheet size={16} style={{ marginRight: 8 }} /> Export
-          </a>
+          </button>
         </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -400,7 +412,7 @@ function FlightTable({ flights }) {
   );
 }
 
-function ForecastView() {
+function ForecastView({ authFetch }) {
   const [rates, setRates] = useState([]);
   const [selectedAircraft, setSelectedAircraft] = useState('');
   const [minutes, setMinutes] = useState(60);
@@ -493,7 +505,7 @@ function ForecastView() {
   );
 }
 
-function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
+function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, authFetch, loadData }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
   const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
@@ -504,7 +516,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [newTemplate, setNewTemplate] = useState({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
   const [appSettings, setAppSettings] = useState({});
 
-  const loadData = async () => {
+  const refreshLocalData = async () => {
     const [c, t, tmpl, s] = await Promise.all([
       authFetch(`${API}/api/clubs`),
       authFetch(`${API}/api/trainings`),
@@ -517,7 +529,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
     setAppSettings(await s.json());
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { refreshLocalData(); }, []);
 
   const addClub = async (e) => {
     e.preventDefault();
@@ -526,20 +538,20 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
     const url = isEdit ? `${API}/api/clubs/${editingClub.id}` : `${API}/api/clubs`;
     const method = isEdit ? 'PUT' : 'POST';
 
-    await fetch(url, {
+    await authFetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClub)
     });
     setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
     setEditingClub(null);
-    loadData();
+    refreshLocalData();
   };
 
   const deleteClub = async (id) => {
     if (!confirm('Verein wirklich löschen?')) return;
     await authFetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
-    loadData();
+    refreshLocalData();
   };
 
   const triggerReconcile = async () => {
@@ -561,7 +573,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value })
     });
-    loadData();
+    refreshLocalData();
   };
 
   return (
@@ -749,7 +761,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                     <td style={{ padding: '12px' }}>{formatDate(t.start_date)}</td>
                     <td style={{ padding: '12px' }}>{formatDate(t.end_date)}</td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <button onClick={async () => { await authFetch(`${API}/api/trainings/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+                      <button onClick={async () => { await authFetch(`${API}/api/trainings/${t.id}`, { method: 'DELETE' }); refreshLocalData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -775,7 +787,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               });
 
               setNewTemplate({ name: '', delimiter: ';', has_header: true, date_format: '02.01.2006', date_col: 0, aircraft_col: 1, departure_col: 4, arrival_col: 5, block_minutes_col: 6, flight_minutes_col: 7, pilot_col: 3, training_type_col: 11, flight_rule_col: 2, is_default: false });
-              loadData();
+              refreshLocalData();
             }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px', background: 'rgba(128,128,128,0.05)', padding: '16px', borderRadius: '8px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Profil Name</label>
@@ -837,13 +849,13 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       {!t.is_default && (
-                        <button onClick={async () => { await authFetch(`${API}/api/csv-templates/${t.id}/set-default`, { method: 'POST' }); loadData(); }} style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }} title="Als Standard setzen"><Star size={16} /></button>
+                        <button onClick={async () => { await authFetch(`${API}/api/csv-templates/${t.id}/set-default`, { method: 'POST' }); refreshLocalData(); }} style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }} title="Als Standard setzen"><Star size={16} /></button>
                       )}
                       {t.is_default && (
                         <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b', marginTop: 8 }} />
                       )}
                       <button onClick={() => setNewTemplate(t)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Bearbeiten"><Edit2 size={16} /></button>
-                      <button onClick={async () => { if (confirm('Löschen?')) { await authFetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
+                      <button onClick={async () => { if (confirm('Löschen?')) { await authFetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); refreshLocalData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -884,7 +896,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   );
 }
 
-function ImportView({ onImported }) {
+function ImportView({ onImported, authFetch }) {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -1171,10 +1183,10 @@ function App() {
 
       <div style={{ padding: '0 24px 24px' }}>
         {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} />}
-        {activeTab === 'flights' && <FlightTable flights={flights} />}
-        {activeTab === 'forecast' && <ForecastView />}
-        {activeTab === 'import' && <ImportView onImported={loadData} />}
-        {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} />}
+        {activeTab === 'flights' && <FlightTable flights={flights} authFetch={authFetch} />}
+        {activeTab === 'forecast' && <ForecastView authFetch={authFetch} />}
+        {activeTab === 'import' && <ImportView onImported={loadData} authFetch={authFetch} />}
+        {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} authFetch={authFetch} loadData={loadData} />}
       </div>
     </div>
   );
