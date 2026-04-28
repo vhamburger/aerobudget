@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     date TEXT NOT NULL,
     aircraft TEXT NOT NULL,
     amount REAL DEFAULT 0.0,
+    file_path TEXT DEFAULT '',
     processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

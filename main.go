@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,7 +20,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.1.0"
+const AppVersion = "1.2.0"
 
 func main() {
 	log.Printf("=========================================")
@@ -413,6 +414,93 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"matched": %d}`, count)
+	})
+
+	// --- INVOICES PDF SERVING ---
+	r.Get("/api/invoices/{id}/pdf", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		var path string
+		err := db.DB.Get(&path, `SELECT file_path FROM invoices WHERE id = ?`, id)
+		if err != nil || path == "" {
+			http.Error(w, "Rechnung nicht gefunden", 404)
+			return
+		}
+		w.Header().Set("Content-Type", "application/pdf")
+		http.ServeFile(w, r, path)
+	})
+
+	// --- AIRCRAFT RATES (Calculator) ---
+	r.Get("/api/aircraft/rates", func(w http.ResponseWriter, r *http.Request) {
+		type Rate struct {
+			Aircraft    string  `json:"aircraft"`
+			RatePerMin  float64 `json:"rate_per_min"`
+			LandingFee  float64 `json:"landing_fee"`
+			ApproachFee float64 `json:"approach_fee"`
+		}
+		var rates []Rate
+		// Hole die aktuellsten Flugkosten pro Kennzeichen
+		query := `
+			SELECT aircraft, flight_cost, block_minutes, landing_fee, approach_fee
+			FROM flights
+			WHERE invoice_id IS NOT NULL AND block_minutes > 0
+			GROUP BY aircraft
+			HAVING MAX(date)
+		`
+		rows, err := db.DB.Query(query)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var r Rate
+			var fc, l, a float64
+			var bm int
+			if err := rows.Scan(&r.Aircraft, &fc, &bm, &l, &a); err == nil {
+				r.RatePerMin = fc / float64(bm)
+				r.LandingFee = l
+				r.ApproachFee = a
+				rates = append(rates, r)
+			}
+		}
+		
+		if rates == nil {
+			rates = []Rate{}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(rates)
+	})
+
+	// --- CSV EXPORT ---
+	r.Get("/api/export/flights", func(w http.ResponseWriter, r *http.Request) {
+		var flights []models.Flight
+		db.DB.Select(&flights, `SELECT * FROM flights ORDER BY date DESC`)
+		
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment;filename=logbook_export.csv")
+		
+		writer := csv.NewWriter(w)
+		writer.Comma = ';'
+		
+		writer.Write([]string{"Datum", "Kennzeichen", "Von", "Nach", "Blockzeit", "Flugzeit", "Art", "Schulung", "Gesamtkosten", "Flugkosten", "Landegebuehr", "Anfluggebuehr"})
+		for _, f := range flights {
+			writer.Write([]string{
+				f.Date,
+				f.Aircraft,
+				f.Departure,
+				f.Arrival,
+				strconv.Itoa(f.BlockMinutes),
+				strconv.Itoa(f.FlightMinutes),
+				f.FlightRule,
+				f.TrainingType,
+				fmt.Sprintf("%.2f", f.Cost),
+				fmt.Sprintf("%.2f", f.FlightCost),
+				fmt.Sprintf("%.2f", f.LandingFee),
+				fmt.Sprintf("%.2f", f.ApproachFee),
+			})
+		}
+		writer.Flush()
 	})
 
 	// --- STATIC FILES (React SPA Support) ---

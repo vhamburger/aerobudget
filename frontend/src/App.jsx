@@ -177,40 +177,58 @@ function Dashboard({ stats, flights, theme }) {
 
 function FlightTable({ flights }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const filteredFlights = flights.filter(f => {
     const s = searchTerm.toLowerCase();
     const dateStr = formatDate(f.date).toLowerCase();
-    return (
+    const flightDate = f.date; // YYYY-MM-DD
+    
+    const matchesSearch = (
       f.aircraft.toLowerCase().includes(s) ||
       dateStr.includes(s) ||
       f.departure.toLowerCase().includes(s) ||
       f.arrival.toLowerCase().includes(s) ||
       (f.training_type || '').toLowerCase().includes(s)
     );
+
+    const matchesFrom = !dateFrom || flightDate >= dateFrom;
+    const matchesTo = !dateTo || flightDate <= dateTo;
+
+    return matchesSearch && matchesFrom && matchesTo;
   });
 
   return (
     <div className="glass-panel">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: 24 }}>
         <h2 style={{ margin: 0 }}>Alle Flüge ({filteredFlights.length})</h2>
-        <div style={{ position: 'relative', width: '300px' }}>
-          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
-          <input 
-            placeholder="Suche (Datum, Kennzeichen, Ort...)" 
-            value={searchTerm} 
-            onChange={e => setSearchTerm(e.target.value)}
-            className="input-field"
-            style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px' }}
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')} 
-              style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-            >
-              <X size={14} />
-            </button>
-          )}
+        
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '8px' }}>
+            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Von:</span>
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" style={{ padding: '4px', border: 'none', background: 'transparent' }} />
+            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Bis:</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" style={{ padding: '4px', border: 'none', background: 'transparent' }} />
+          </div>
+
+          <div style={{ position: 'relative', width: '240px' }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
+            <input 
+              placeholder="Suche..." 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)}
+              className="input-field"
+              style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px' }}
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={14} /></button>
+            )}
+          </div>
+
+          <a href={`${API}/api/export/flights`} className="nav-btn" style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8' }}>
+            <FileSpreadsheet size={16} style={{ marginRight: 8 }} /> Export
+          </a>
         </div>
       </div>
       <div style={{ overflowX: 'auto' }}>
@@ -252,13 +270,19 @@ function FlightTable({ flights }) {
                 <td style={{ padding: '12px' }}>
                   {f.cost > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
+                        {f.invoice_id && (
+                          <a href={`${API}/api/invoices/${f.invoice_id}/pdf`} target="_blank" rel="noreferrer" style={{ color: 'inherit', marginLeft: 6 }}>
+                            <FileText size={14} style={{ opacity: 0.6 }} title="Rechnung anzeigen" />
+                          </a>
+                        )}
+                      </div>
                       {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Flug: {formatCurrency(f.flight_cost)}</span>}
                     </div>
                   ) : (
                     <span style={{ color: 'var(--text-secondary)' }}>—</span>
                   )}
-                  {f.invoice_id && <FileText size={12} style={{ marginLeft: 6, opacity: 0.5 }} title="Rechnung verknüpft" />}
                 </td>
                 <td style={{ padding: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                   {f.landing_fee > 0 && <div>Ldg: {formatCurrency(f.landing_fee)}</div>}
@@ -276,6 +300,99 @@ function FlightTable({ flights }) {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+function ForecastView() {
+  const [rates, setRates] = useState([]);
+  const [selectedAircraft, setSelectedAircraft] = useState('');
+  const [minutes, setMinutes] = useState(60);
+  const [persons, setPersons] = useState(1);
+
+  useEffect(() => {
+    fetch(`${API}/api/aircraft/rates`).then(res => res.json()).then(setRates);
+  }, []);
+
+  const rate = rates.find(r => r.aircraft === selectedAircraft);
+  const totalFlight = rate ? rate.rate_per_min * minutes : 0;
+  const perPerson = persons > 0 ? totalFlight / persons : 0;
+
+  return (
+    <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 350px' }}>
+      <div className="glass-panel">
+        <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <TrendingUp size={24} style={{ color: '#38bdf8' }} /> Flugkosten Forecast
+        </h2>
+        
+        <div style={{ display: 'grid', gap: '24px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Flugzeug auswählen</label>
+            <select 
+              className="input-field" 
+              style={{ width: '100%', fontSize: '1.1rem' }}
+              value={selectedAircraft}
+              onChange={e => setSelectedAircraft(e.target.value)}
+            >
+              <option value="">Bitte wählen...</option>
+              {rates.map(r => <option key={r.aircraft} value={r.aircraft}>{r.aircraft}</option>)}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Geplante Blockzeit (Min.)</label>
+              <input 
+                type="number" 
+                value={minutes} 
+                onChange={e => setMinutes(Number(e.target.value))} 
+                className="input-field" 
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Personen (Split)</label>
+              <input 
+                type="number" 
+                min="1"
+                value={persons} 
+                onChange={e => setPersons(Number(e.target.value))} 
+                className="input-field" 
+                style={{ width: '100%' }}
+              />
+            </div>
+          </div>
+
+          {rate && (
+            <div style={{ marginTop: 12, padding: '20px', background: 'rgba(56,189,248,0.05)', borderRadius: '12px', border: '1px solid rgba(56,189,248,0.1)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ opacity: 0.6 }}>Basis-Rate (letzte Rechnung):</span>
+                <span style={{ fontWeight: 600 }}>{formatCurrency(rate.rate_per_min * 60)} / h</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', opacity: 0.5 }}>
+                <span>Zusatzkosten (Schätzwert Heimatplatz):</span>
+                <span>Ldg: {formatCurrency(rate.landing_fee)} | ACG: {formatCurrency(rate.approach_fee)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="glass-panel" style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 8 }}>VORAUSSICHTLICHE KOSTEN</p>
+        <div style={{ fontSize: '3rem', fontWeight: 800, color: '#38bdf8', marginBottom: 4 }}>
+          {formatCurrency(totalFlight)}
+        </div>
+        {persons > 1 && (
+          <div style={{ fontSize: '1.2rem', opacity: 0.8, color: '#4ade80' }}>
+            {formatCurrency(perPerson)} <span style={{ fontSize: '0.9rem' }}>pro Person</span>
+          </div>
+        )}
+        <p style={{ marginTop: 24, fontSize: '0.7rem', opacity: 0.4, fontStyle: 'italic' }}>
+          * Schätzung basierend auf der letzten Rechnung für {selectedAircraft || '---'}. <br/>
+          Exklusive Lande- und Anfluggebühren am Zielplatz.
+        </p>
       </div>
     </div>
   );
@@ -714,6 +831,9 @@ function App() {
         <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Plane size={16} style={{ marginRight: 8 }} /> Flüge
         </button>
+        <button onClick={() => setActiveTab('forecast')} className="nav-btn" style={{ background: activeTab === 'forecast' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'forecast' ? '#38bdf8' : 'var(--text-primary)' }}>
+          <TrendingUp size={16} style={{ marginRight: 8 }} /> Forecast
+        </button>
         <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Upload size={16} style={{ marginRight: 8 }} /> Import
         </button>
@@ -740,6 +860,7 @@ function App() {
       <div style={{ padding: '0 24px 24px' }}>
         {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} />}
         {activeTab === 'flights' && <FlightTable flights={flights} />}
+        {activeTab === 'forecast' && <ForecastView />}
         {activeTab === 'import' && <ImportView onImported={loadData} />}
         {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} />}
       </div>

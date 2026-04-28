@@ -86,12 +86,12 @@ func processNewInvoice(filePath string) {
 		aircraft = invoice.LineItems[0].AircraftRegistration
 	}
 
-	// 3. Rechnung in DB speichern
+	absPath, _ := filepath.Abs(filePath)
 	res, err := db.DB.Exec(`
-        INSERT INTO invoices (invoice_number, date, amount, aircraft) 
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(invoice_number) DO NOTHING`,
-		invoice.InvoiceNumber, invoice.Date, invoice.TotalAmount, aircraft)
+        INSERT INTO invoices (invoice_number, date, amount, aircraft, file_path) 
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(invoice_number) DO UPDATE SET file_path = excluded.file_path`,
+		invoice.InvoiceNumber, invoice.Date, invoice.TotalAmount, aircraft, absPath)
 
 	if err != nil {
 		log.Printf("[Watcher] DB Error: %v", err)
