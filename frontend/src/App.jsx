@@ -56,7 +56,7 @@ function LoginView({ onLogin }) {
   );
 }
 
-function ChangePasswordDialog({ onComplete }) {
+function ChangePasswordDialog({ onComplete, onCancel }) {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -85,7 +85,7 @@ function ChangePasswordDialog({ onComplete }) {
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
         <h2 style={{ marginBottom: '16px' }}>Passwort ändern</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Aus Sicherheitsgründen musst du dein Passwort ändern, bevor du fortfährst.</p>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Wähle ein neues, sicheres Passwort für deinen Zugang.</p>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '8px' }}>Neues Passwort</label>
@@ -96,7 +96,10 @@ function ChangePasswordDialog({ onComplete }) {
             <input type="password" className="input-field" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
           </div>
           {error && <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Speichern</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Speichern</button>
+            {onCancel && <button type="button" onClick={onCancel} className="nav-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }}>Abbrechen</button>}
+          </div>
         </form>
       </div>
     </div>
@@ -952,6 +955,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
 
   const authFetch = async (url, options = {}) => {
     const res = await fetch(url, {
@@ -1093,10 +1098,16 @@ function App() {
   }
 
   return (
-    <div className="app-container">
-      {user.requires_password_change && <ChangePasswordDialog onComplete={() => {
-        authFetch(`${API}/api/me`).then(res => res.json()).then(setUser);
-      }} />}
+    <div className="app-container" onClick={() => setShowUserMenu(false)}>
+      {(user.requires_password_change || showPasswordChange) && (
+        <ChangePasswordDialog 
+          onComplete={() => {
+            setShowPasswordChange(false);
+            authFetch(`${API}/api/me`).then(res => res.json()).then(setUser);
+          }}
+          onCancel={user.requires_password_change ? null : () => setShowPasswordChange(false)}
+        />
+      )}
       
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
         <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
@@ -1105,20 +1116,43 @@ function App() {
         <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Database size={16} style={{ marginRight: 8 }} /> Flugbuch
         </button>
+        <button onClick={() => setActiveTab('forecast')} className="nav-btn" style={{ background: activeTab === 'forecast' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'forecast' ? '#38bdf8' : 'var(--text-primary)' }}>
+          <TrendingUp size={16} style={{ marginRight: 8 }} /> Forecast
+        </button>
+        <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'var(--text-primary)' }}>
+          <Upload size={16} style={{ marginRight: 8 }} /> Import
+        </button>
         <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
         </button>
+        
         <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: 8 }}>
-          <Activity size={12} style={{ display: 'inline', marginRight: 4 }} /> {user.username}
+        
+        <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+          <button 
+            className="nav-btn" 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            style={{ color: showUserMenu ? '#38bdf8' : 'var(--text-secondary)' }}
+          >
+            <Activity size={16} style={{ marginRight: 8 }} /> {user.username}
+          </button>
+          
+          {showUserMenu && (
+            <div className="glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 12, padding: 8, minWidth: 160, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button className="nav-item" style={{ padding: '8px 12px', justifyContent: 'flex-start', borderRadius: 6 }} onClick={() => { setShowPasswordChange(true); setShowUserMenu(false); }}>
+                <RefreshCcw size={14} style={{ marginRight: 8 }} /> Passwort ändern
+              </button>
+              <button className="nav-item" style={{ padding: '8px 12px', justifyContent: 'flex-start', borderRadius: 6, color: '#f87171' }} onClick={() => {
+                setToken(null);
+                setUser(null);
+                localStorage.removeItem('token');
+              }}>
+                <Trash2 size={14} style={{ marginRight: 8 }} /> Logout
+              </button>
+            </div>
+          )}
         </div>
-        <button className="nav-btn" style={{ color: '#f87171' }} onClick={() => {
-          setToken(null);
-          setUser(null);
-          localStorage.removeItem('token');
-        }}>
-          Logout
-        </button>
+
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="nav-btn"
