@@ -401,7 +401,7 @@ function ForecastView() {
 function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
-  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '' });
+  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '' });
   const [editingClub, setEditingClub] = useState(null);
   const [trainings, setTrainings] = useState([]);
   const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
@@ -433,7 +433,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClub)
     });
-    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '' });
+    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '' });
     setEditingClub(null);
     loadData();
   };
@@ -540,9 +540,15 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               </div>
 
               <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Flugkosten (FlyLinz)</label>
-                  <input placeholder="z.B. Betrag" value={newClub.flight_amount_keyword} onChange={e => setNewClub({ ...newClub, flight_amount_keyword: e.target.value })} className="input-field" style={{ width: '100%' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem', opacity: 0.7 }}>Keyword Rechnungs-Nr.</label>
+                    <input placeholder="z.B. Rechnungsnummer" value={newClub.invoice_number_keyword} onChange={e => setNewClub({...newClub, invoice_number_keyword: e.target.value})} className="input-field" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem', opacity: 0.7 }}>Keyword Flugkosten</label>
+                    <input placeholder="z.B. Fluggebühr" value={newClub.flight_amount_keyword} onChange={e => setNewClub({...newClub, flight_amount_keyword: e.target.value})} className="input-field" style={{ width: '100%' }} />
+                  </div>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: 4, fontSize: '0.8rem' }}>Keyw. Landegebühr</label>

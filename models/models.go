@@ -38,6 +38,7 @@ type Club struct {
 	FlightAmountKeyword string `json:"flight_amount_keyword" db:"flight_amount_keyword"`
 	LandingFeeKeyword   string `json:"landing_fee_keyword" db:"landing_fee_keyword"`
 	ApproachFeeKeyword  string `json:"approach_fee_keyword" db:"approach_fee_keyword"`
+	InvoiceNumberKeyword string `json:"invoice_number_keyword" db:"invoice_number_keyword"`
 }
 
 type Training struct {

@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS clubs (
     heuristic TEXT DEFAULT 'highest_value',
     flight_amount_keyword TEXT DEFAULT '',
     landing_fee_keyword TEXT DEFAULT '',
-    approach_fee_keyword TEXT DEFAULT ''
+    approach_fee_keyword TEXT DEFAULT '',
+    invoice_number_keyword TEXT DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS trainings (

@@ -67,7 +67,13 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 	}
 
 	// Invoice Number
-	invNumRe := regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)[\s:]*([A-Z0-9-/]+)`)
+	var invNumRe *regexp.Regexp
+	if activeClub != nil && activeClub.InvoiceNumberKeyword != "" {
+		invNumRe = regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.InvoiceNumberKeyword) + `[\s:]*([A-Z0-9-/]+)`)
+	} else {
+		invNumRe = regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)[\s:]*([A-Z0-9-/]+)`)
+	}
+
 	if match := invNumRe.FindStringSubmatch(text); len(match) > 1 {
 		inv.InvoiceNumber = strings.TrimSpace(match[1])
 	} else {
