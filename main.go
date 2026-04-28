@@ -191,24 +191,7 @@ func main() {
 		json.NewEncoder(w).Encode(stats)
 	})
 
-	// --- CLUBS API ---
-	r.Get("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
-		var clubs []struct {
-			ID          int    `db:"id" json:"id"`
-			Name        string `db:"name" json:"name"`
-			BillingType string `db:"billing_type" json:"billing_type"`
-		}
-		db.DB.Select(&clubs, `SELECT id, name, billing_type FROM clubs ORDER BY name ASC`)
-		if clubs == nil {
-			clubs = []struct {
-				ID          int    `db:"id" json:"id"`
-				Name        string `db:"name" json:"name"`
-				BillingType string `db:"billing_type" json:"billing_type"`
-			}{}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(clubs)
-	})
+
 
 	// --- CLUBS API ---
 	r.Get("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
