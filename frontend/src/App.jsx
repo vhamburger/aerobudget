@@ -1150,7 +1150,7 @@ function App() {
           </button>
           
           {showUserMenu && (
-            <div className="glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 12, padding: '4px', minWidth: 180, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '2px', backdropFilter: 'blur(20px)', background: 'var(--glass-bg)' }}>
+            <div className="glass-panel" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 12, padding: '4px', minWidth: 180, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '2px', backdropFilter: 'blur(20px)', background: 'var(--glass-bg)' }}>
               <button 
                 className="nav-btn" 
                 style={{ padding: '10px 16px', justifyContent: 'flex-start', borderRadius: 10, width: '100%', fontSize: '0.85rem' }} 
