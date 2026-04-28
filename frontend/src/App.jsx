@@ -447,7 +447,14 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
   const triggerReconcile = async () => {
     const res = await fetch(`${API}/api/reconcile`, { method: 'POST' });
     const data = await res.json();
-    alert(`${data.matched} Flüge wurden erfolgreich Rechnungen zugeordnet.`);
+    alert(`Matching abgeschlossen.`);
+  };
+
+  const resetReconcile = async () => {
+    if (!confirm('Alle Rechnungsverknüpfungen wirklich löschen? Die Daten werden beim nächsten Reconcile neu berechnet.')) return;
+    await fetch(`${API}/api/reconcile/reset`, { method: 'POST' });
+    alert('Verknüpfungen gelöscht.');
+    window.location.reload();
   };
 
   return (
@@ -478,6 +485,9 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={triggerReconcile} className="nav-btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
                   <RefreshCcw size={14} style={{ marginRight: 8 }} /> Reconcile
+                </button>
+                <button onClick={resetReconcile} className="nav-btn" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)' }}>
+                  <Trash2 size={14} style={{ marginRight: 8 }} /> Reset Matches
                 </button>
                 <button onClick={onBatchDelete} disabled={selectedIds.length === 0} className="nav-btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}>
                   <Trash2 size={14} style={{ marginRight: 8 }} /> Löschen ({selectedIds.length})

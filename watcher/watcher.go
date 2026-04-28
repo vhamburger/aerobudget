@@ -74,7 +74,7 @@ func processNewInvoice(filePath string) {
 	}
 
 	// 2. Parser mit den Kennzeichen und Vereinen aufrufen
-	invoice, err := importer.ParseInvoiceText(text, knownAircraft, clubs)
+	invoice, err := importer.ParseInvoiceText(text, knownAircraft, clubs, filepath.Base(filePath))
 	if err != nil {
 		log.Printf("[Watcher] Fehler beim Parsen: %v", err)
 		return

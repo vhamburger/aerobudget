@@ -390,13 +390,19 @@ func main() {
 
 	// --- MATCHING / RECONCILE ---
 	r.Post("/api/reconcile", func(w http.ResponseWriter, r *http.Request) {
-		count, err := watcher.ReconcileMissingCosts()
+		_, err := watcher.ReconcileMissingCosts()
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"matched": %d}`, count)
+		fmt.Fprintf(w, `{"matched": 0}`)
+	})
+
+	r.Post("/api/reconcile/reset", func(w http.ResponseWriter, r *http.Request) {
+		db.DB.Exec(`UPDATE flights SET invoice_id = NULL, cost = 0, flight_cost = 0, landing_fee = 0, approach_fee = 0`)
+		db.DB.Exec(`DELETE FROM invoices`)
+		w.WriteHeader(200)
 	})
 
 	// --- INVOICES PDF SERVING ---

@@ -44,7 +44,7 @@ func ExtractText(filePath string) (string, error) {
 }
 
 // ParseInvoiceText akzeptiert nun eine Liste bekannter Kennzeichen aus der DB und Vereins-Konfigurationen
-func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) (PDFInvoice, error) {
+func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, fallbackName string) (PDFInvoice, error) {
 	inv := PDFInvoice{}
 	lines := strings.Split(text, "\n")
 
@@ -67,11 +67,11 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club) 
 	}
 
 	// Invoice Number
-	invNumRe := regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No)[\s:]*([A-Z0-9-]+)`)
+	invNumRe := regexp.MustCompile(`(?i)(?:Rechnungsnummer|RechnungNr|Inv-No|Rechnung)[\s:]*([A-Z0-9-/]+)`)
 	if match := invNumRe.FindStringSubmatch(text); len(match) > 1 {
 		inv.InvoiceNumber = strings.TrimSpace(match[1])
 	} else {
-		inv.InvoiceNumber = fmt.Sprintf("INV-%d", time.Now().Unix())
+		inv.InvoiceNumber = fmt.Sprintf("INV-%s-%d", fallbackName, time.Now().UnixNano())
 	}
 
 	// Invoice Date
