@@ -27,6 +27,7 @@ type Invoice struct {
 	Date          string    `json:"date" db:"date"`
 	Amount        float64   `json:"amount" db:"amount"`
 	FilePath      string    `json:"file_path" db:"file_path"`
+	FileHash      string    `json:"file_hash" db:"file_hash"`
 	ProcessedAt   time.Time `json:"processed_at" db:"processed_at"`
 }
 

@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS invoices (
     aircraft TEXT NOT NULL,
     amount REAL DEFAULT 0.0,
     file_path TEXT DEFAULT '',
+    file_hash TEXT UNIQUE DEFAULT '',
     processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

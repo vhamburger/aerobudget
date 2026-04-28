@@ -53,6 +53,7 @@ func InitDB(dbPath string) error {
 		`ALTER TABLE invoices ADD COLUMN file_path TEXT DEFAULT ''`,
 		`ALTER TABLE clubs ADD COLUMN invoice_number_keyword TEXT DEFAULT ''`,
 		`ALTER TABLE clubs ADD COLUMN invoice_number_numeric_only INTEGER DEFAULT 0`,
+		`ALTER TABLE invoices ADD COLUMN file_hash TEXT DEFAULT ''`,
 	}
 	migrationCount := 0
 	for _, m := range migrations {

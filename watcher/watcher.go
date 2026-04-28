@@ -1,8 +1,11 @@
 package watcher
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -86,12 +89,19 @@ func processNewInvoice(filePath string) {
 		aircraft = invoice.LineItems[0].AircraftRegistration
 	}
 
+	// Hash berechnen für Eindeutigkeit
+	fileHash := calculateFileHash(filePath)
+	uniqueInvoiceNumber := invoice.InvoiceNumber
+	if fileHash != "" {
+		uniqueInvoiceNumber = fmt.Sprintf("%s-%s", invoice.InvoiceNumber, fileHash[:8])
+	}
+
 	absPath, _ := filepath.Abs(filePath)
 	res, err := db.DB.Exec(`
-        INSERT INTO invoices (invoice_number, date, amount, aircraft, file_path) 
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(invoice_number) DO UPDATE SET file_path = excluded.file_path`,
-		invoice.InvoiceNumber, invoice.Date, invoice.TotalAmount, aircraft, absPath)
+        INSERT INTO invoices (invoice_number, date, amount, aircraft, file_path, file_hash) 
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(invoice_number) DO UPDATE SET file_path = excluded.file_path, file_hash = excluded.file_hash`,
+		uniqueInvoiceNumber, invoice.Date, invoice.TotalAmount, aircraft, absPath, fileHash)
 
 	if err != nil {
 		log.Printf("[Watcher] DB Error: %v", err)
@@ -102,10 +112,10 @@ func processNewInvoice(filePath string) {
 	rowsAffected, _ := res.RowsAffected()
 	if rowsAffected > 0 {
 		invoiceID, _ = res.LastInsertId()
-		db.Log(fmt.Sprintf("[Watcher] Rechnung %s neu angelegt (ID: %d).", invoice.InvoiceNumber, invoiceID), false)
+		db.Log(fmt.Sprintf("[Watcher] Rechnung %s neu angelegt (ID: %d).", uniqueInvoiceNumber, invoiceID), false)
 	} else {
-		db.DB.Get(&invoiceID, "SELECT id FROM invoices WHERE invoice_number = ?", invoice.InvoiceNumber)
-		db.Log(fmt.Sprintf("[Watcher] Rechnung %s existiert bereits (ID: %d).", invoice.InvoiceNumber, invoiceID), true)
+		db.DB.Get(&invoiceID, "SELECT id FROM invoices WHERE invoice_number = ?", uniqueInvoiceNumber)
+		db.Log(fmt.Sprintf("[Watcher] Rechnung %s existiert bereits (ID: %d).", uniqueInvoiceNumber, invoiceID), true)
 	}
 
 	// 4. Matching der Einzelposten gegen bestehende Flüge
@@ -188,4 +198,16 @@ func ReconcileMissingCosts() (int, error) {
 	}
 
 	return count, nil
+}
+func calculateFileHash(filePath string) string {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }

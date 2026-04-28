@@ -1,5 +1,10 @@
 # Aerobudget Release Notes
 
+## [1.2.5] - 2026-04-28
+### Added
+- **File Hashing**: Invoices are now uniquely identified by their file content hash (SHA256). This prevents collisions even if the parser extracts duplicate or wrong invoice numbers (like zip codes).
+- **Physical Uniqueness**: Each PDF file now creates its own record, regardless of extracted text quality.
+
 ## [1.2.4] - 2026-04-28
 ### Added
 - **Numeric Only Option**: New setting for clubs to restrict invoice number extraction to digits only.
