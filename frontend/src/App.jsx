@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders, LogOut } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
@@ -1150,16 +1150,25 @@ function App() {
           </button>
           
           {showUserMenu && (
-            <div className="glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 12, padding: 8, minWidth: 160, zIndex: 100, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <button className="nav-item" style={{ padding: '8px 12px', justifyContent: 'flex-start', borderRadius: 6 }} onClick={() => { setShowPasswordChange(true); setShowUserMenu(false); }}>
-                <RefreshCcw size={14} style={{ marginRight: 8 }} /> Passwort ändern
+            <div className="glass-panel" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 12, padding: '4px', minWidth: 180, zIndex: 100, display: 'flex', flexDirection: 'column', gap: '2px', backdropFilter: 'blur(20px)', background: 'var(--glass-bg)' }}>
+              <button 
+                className="nav-btn" 
+                style={{ padding: '10px 16px', justifyContent: 'flex-start', borderRadius: 10, width: '100%', fontSize: '0.85rem' }} 
+                onClick={() => { setShowPasswordChange(true); setShowUserMenu(false); }}
+              >
+                <RefreshCcw size={14} style={{ marginRight: 10, opacity: 0.7 }} /> Passwort ändern
               </button>
-              <button className="nav-item" style={{ padding: '8px 12px', justifyContent: 'flex-start', borderRadius: 6, color: '#f87171' }} onClick={() => {
-                setToken(null);
-                setUser(null);
-                localStorage.removeItem('token');
-              }}>
-                <Trash2 size={14} style={{ marginRight: 8 }} /> Logout
+              <div style={{ height: '1px', background: 'var(--glass-border)', margin: '4px 8px' }}></div>
+              <button 
+                className="nav-btn" 
+                style={{ padding: '10px 16px', justifyContent: 'flex-start', borderRadius: 10, width: '100%', fontSize: '0.85rem', color: '#f87171' }} 
+                onClick={() => {
+                  setToken(null);
+                  setUser(null);
+                  localStorage.removeItem('token');
+                }}
+              >
+                <LogOut size={14} style={{ marginRight: 10, opacity: 0.7 }} /> Logout
               </button>
             </div>
           )}
