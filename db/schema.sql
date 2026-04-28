@@ -70,5 +70,13 @@ CREATE TABLE IF NOT EXISTS settings (
     value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'admin',
+    requires_password_change INTEGER DEFAULT 0
+);
+
 -- Column migrations for existing databases
 -- These will fail silently if columns already exist

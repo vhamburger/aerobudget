@@ -43,6 +43,14 @@ type Club struct {
 	InvoiceNumberNumericOnly bool `json:"invoice_number_numeric_only" db:"invoice_number_numeric_only"`
 }
 
+type User struct {
+	ID                     int    `json:"id" db:"id"`
+	Username               string `json:"username" db:"username"`
+	PasswordHash           string `json:"-" db:"password_hash"`
+	Role                   string `json:"role" db:"role"`
+	RequiresPasswordChange bool   `json:"requires_password_change" db:"requires_password_change"`
+}
+
 type Training struct {
 	ID        int    `json:"id" db:"id"`
 	Name      string `json:"name" db:"name"`

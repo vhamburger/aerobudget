@@ -1,5 +1,11 @@
 # Aerobudget Release Notes
 
+## [1.3.0] - 2026-04-28
+### Added
+- **User Authentication**: Secure login system with JWT-based API protection (bcrypt + JWT).
+- **Forced Password Change**: Mandatory password update flow for initial setup.
+- **Enhanced UI**: Added user profile and session management.
+
 ## [1.2.5] - 2026-04-28
 ### Added
 - **File Hashing**: Invoices are now uniquely identified by their file content hash (SHA256). This prevents collisions even if the parser extracts duplicate or wrong invoice numbers (like zip codes).

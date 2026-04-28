@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/aerobudget/aerobudget/auth"
 	"github.com/aerobudget/aerobudget/db"
 	"github.com/aerobudget/aerobudget/importer"
 	"github.com/aerobudget/aerobudget/models"
@@ -20,7 +21,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.2.5"
+const AppVersion = "1.3.0"
 
 func main() {
 	log.Printf("=========================================")
@@ -44,6 +45,77 @@ func main() {
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 	}))
+
+	// --- AUTH API ---
+	r.Post("/api/login", func(w http.ResponseWriter, r *http.Request) {
+		var creds struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+			http.Error(w, "Invalid request", 400)
+			return
+		}
+
+		var user models.User
+		err := db.DB.Get(&user, "SELECT * FROM users WHERE username = ?", creds.Username)
+		if err != nil || !auth.CheckPasswordHash(creds.Password, user.PasswordHash) {
+			http.Error(w, "Invalid credentials", 401)
+			return
+		}
+
+		token, _ := auth.GenerateToken(user.Username, user.Role)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"token": token,
+			"user":  user,
+		})
+	})
+
+	// Protected routes group
+	r.Group(func(r chi.Router) {
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				authHeader := r.Header.Get("Authorization")
+				if authHeader == "" || len(authHeader) < 8 {
+					http.Error(w, "Unauthorized", 401)
+					return
+				}
+				tokenString := authHeader[7:]
+				_, err := auth.ValidateToken(tokenString)
+				if err != nil {
+					http.Error(w, "Unauthorized", 401)
+					return
+				}
+				next.ServeHTTP(w, r)
+			})
+		})
+
+		r.Get("/api/me", func(w http.ResponseWriter, r *http.Request) {
+			authHeader := r.Header.Get("Authorization")
+			if len(authHeader) < 8 {
+				http.Error(w, "Unauthorized", 401)
+				return
+			}
+			claims, _ := auth.ValidateToken(authHeader[7:])
+			var user models.User
+			db.DB.Get(&user, "SELECT * FROM users WHERE username = ?", claims.Username)
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(user)
+		})
+
+		r.Post("/api/change-password", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				NewPassword string `json:"new_password"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			authHeader := r.Header.Get("Authorization")[7:]
+			claims, _ := auth.ValidateToken(authHeader)
+
+			hash, _ := auth.HashPassword(req.NewPassword)
+			db.DB.Exec("UPDATE users SET password_hash = ?, requires_password_change = 0 WHERE username = ?", hash, claims.Username)
+			w.WriteHeader(200)
+		})
 
 	// --- FLIGHTS API ---
 	r.Get("/api/flights", func(w http.ResponseWriter, r *http.Request) {
@@ -518,6 +590,8 @@ func main() {
 		writer.Flush()
 	})
 
+	})
+	
 	// --- STATIC FILES (React SPA Support) ---
 	staticDir := "./frontend/dist"
 	fs := http.FileServer(http.Dir(staticDir))

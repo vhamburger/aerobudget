@@ -8,6 +8,7 @@ import (
 
 	"strings"
 
+	"golang.org/x/crypto/bcrypt"
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
 )
@@ -54,6 +55,7 @@ func InitDB(dbPath string) error {
 		`ALTER TABLE clubs ADD COLUMN invoice_number_keyword TEXT DEFAULT ''`,
 		`ALTER TABLE clubs ADD COLUMN invoice_number_numeric_only INTEGER DEFAULT 0`,
 		`ALTER TABLE invoices ADD COLUMN file_hash TEXT DEFAULT ''`,
+		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, role TEXT, requires_password_change INTEGER)`,
 	}
 	migrationCount := 0
 	for _, m := range migrations {
@@ -89,8 +91,33 @@ func InitDB(dbPath string) error {
 	}
 	DebugMode = (dbMode == "true")
 
+	// Seed Admin User
+	seedAdmin()
+
 	log.Println("Database initialized successfully.")
 	return nil
+}
+
+func seedAdmin() {
+	var count int
+	DB.Get(&count, "SELECT COUNT(*) FROM users")
+	if count == 0 {
+		user := os.Getenv("ADMIN_USER")
+		pass := os.Getenv("ADMIN_PASSWORD")
+		requiresChange := 1
+		if user == "" {
+			user = "admin"
+			pass = "admin"
+		} else {
+			requiresChange = 0 // If env provided, assume it's set
+		}
+
+		hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+		_, err := DB.Exec("INSERT INTO users (username, password_hash, role, requires_password_change) VALUES (?, ?, 'admin', ?)", user, string(hash), requiresChange)
+		if err == nil {
+			log.Printf("[Auth] Initial admin user created: %s", user)
+		}
+	}
 }
 
 func Log(msg string, isDebug bool) {

@@ -11,6 +11,98 @@ ChartJS.defaults.font.family = "'Inter', sans-serif";
 
 const API = '';
 
+function LoginView({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const res = await fetch(`${API}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      onLogin(data);
+    } else {
+      setError('Ungültige Anmeldedaten');
+    }
+  };
+
+  return (
+    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <img src={logo} alt="Logo" style={{ height: '80px', marginBottom: '16px' }} />
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Willkommen zurück</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>Bitte melde dich an, um fortzufahren.</p>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Benutzername</label>
+            <input type="text" className="input-field" value={username} onChange={e => setUsername(e.target.value)} required />
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Passwort</label>
+            <input type="password" className="input-field" value={password} onChange={e => setPassword(e.target.value)} required />
+          </div>
+          {error && <p style={{ color: '#ef4444', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Anmelden</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ChangePasswordDialog({ onComplete }) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setError('Passwörter stimmen nicht überein');
+      return;
+    }
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API}/api/change-password`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ new_password: newPassword })
+    });
+    if (res.ok) {
+      onComplete();
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
+        <h2 style={{ marginBottom: '16px' }}>Passwort ändern</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Aus Sicherheitsgründen musst du dein Passwort ändern, bevor du fortfährst.</p>
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Neues Passwort</label>
+            <input type="password" className="input-field" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+          </div>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px' }}>Passwort bestätigen</label>
+            <input type="password" className="input-field" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+          </div>
+          {error && <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>}
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Speichern</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function useTheme() {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const stored = localStorage.getItem('theme');
@@ -312,7 +404,7 @@ function ForecastView() {
   const [persons, setPersons] = useState(1);
 
   useEffect(() => {
-    fetch(`${API}/api/aircraft/rates`).then(res => res.json()).then(setRates);
+    authFetch(`${API}/api/aircraft/rates`).then(res => res.json()).then(setRates);
   }, []);
 
   const rate = rates.find(r => r.aircraft === selectedAircraft);
@@ -411,10 +503,10 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
 
   const loadData = async () => {
     const [c, t, tmpl, s] = await Promise.all([
-      fetch(`${API}/api/clubs`),
-      fetch(`${API}/api/trainings`),
-      fetch(`${API}/api/csv-templates`),
-      fetch(`${API}/api/settings`)
+      authFetch(`${API}/api/clubs`),
+      authFetch(`${API}/api/trainings`),
+      authFetch(`${API}/api/csv-templates`),
+      authFetch(`${API}/api/settings`)
     ]);
     setClubs(await c.json());
     setTrainings(await t.json());
@@ -443,25 +535,25 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
 
   const deleteClub = async (id) => {
     if (!confirm('Verein wirklich löschen?')) return;
-    await fetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
+    await authFetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
     loadData();
   };
 
   const triggerReconcile = async () => {
-    const res = await fetch(`${API}/api/reconcile`, { method: 'POST' });
+    const res = await authFetch(`${API}/api/reconcile`, { method: 'POST' });
     const data = await res.json();
     alert(`Matching abgeschlossen.`);
   };
 
   const resetReconcile = async () => {
     if (!confirm('Alle Rechnungsverknüpfungen wirklich löschen? Die Daten werden beim nächsten Reconcile neu berechnet.')) return;
-    await fetch(`${API}/api/reconcile/reset`, { method: 'POST' });
+    await authFetch(`${API}/api/reconcile/reset`, { method: 'POST' });
     alert('Verknüpfungen gelöscht.');
     window.location.reload();
   };
 
   const updateSetting = async (key, value) => {
-    await fetch(`${API}/api/settings`, {
+    await authFetch(`${API}/api/settings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, value })
@@ -629,7 +721,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
             <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Definiere Zeiträume für PPL, IFR etc. Kosten werden automatisch zugeordnet.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
-              await fetch(`${API}/api/trainings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTraining) });
+              await authFetch(`${API}/api/trainings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newTraining) });
               setNewTraining({ name: '', start_date: '', end_date: '' });
               loadData();
             }} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', marginBottom: '24px' }}>
@@ -654,7 +746,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                     <td style={{ padding: '12px' }}>{formatDate(t.start_date)}</td>
                     <td style={{ padding: '12px' }}>{formatDate(t.end_date)}</td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                      <button onClick={async () => { await fetch(`${API}/api/trainings/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
+                      <button onClick={async () => { await authFetch(`${API}/api/trainings/${t.id}`, { method: 'DELETE' }); loadData(); }} style={{ color: '#f87171', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -673,7 +765,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
               const url = isEdit ? `${API}/api/csv-templates/${newTemplate.id}` : `${API}/api/csv-templates`;
               const method = isEdit ? 'PUT' : 'POST';
 
-              await fetch(url, {
+              await authFetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newTemplate)
@@ -742,13 +834,13 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete }) {
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                       {!t.is_default && (
-                        <button onClick={async () => { await fetch(`${API}/api/csv-templates/${t.id}/set-default`, { method: 'POST' }); loadData(); }} style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }} title="Als Standard setzen"><Star size={16} /></button>
+                        <button onClick={async () => { await authFetch(`${API}/api/csv-templates/${t.id}/set-default`, { method: 'POST' }); loadData(); }} style={{ color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }} title="Als Standard setzen"><Star size={16} /></button>
                       )}
                       {t.is_default && (
                         <Star size={16} style={{ color: '#f59e0b', fill: '#f59e0b', marginTop: 8 }} />
                       )}
                       <button onClick={() => setNewTemplate(t)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Bearbeiten"><Edit2 size={16} /></button>
-                      <button onClick={async () => { if (confirm('Löschen?')) { await fetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
+                      <button onClick={async () => { if (confirm('Löschen?')) { await authFetch(`${API}/api/csv-templates/${t.id}`, { method: 'DELETE' }); loadData(); } }} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer', marginTop: 8 }} title="Löschen"><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))}
@@ -796,7 +888,7 @@ function ImportView({ onImported }) {
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
   useEffect(() => {
-    fetch(`${API}/api/csv-templates`).then(res => res.json()).then(data => {
+    authFetch(`${API}/api/csv-templates`).then(res => res.json()).then(data => {
       setTemplates(data);
       const def = data.find(t => t.is_default);
       if (def) setSelectedTemplate(def.id);
@@ -813,7 +905,7 @@ function ImportView({ onImported }) {
     form.append('file', file);
     form.append('template_id', selectedTemplate);
     try {
-      const res = await fetch(`${API}/api/import/logbook`, { method: 'POST', body: form });
+      const res = await authFetch(`${API}/api/import/logbook`, { method: 'POST', body: form });
       const text = await res.text();
       setStatus(text);
       onImported();
@@ -853,33 +945,75 @@ function ImportView({ onImported }) {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [theme, setTheme] = useTheme();
+  const [view, setView] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [flights, setFlights] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [user, setUser] = useState(null);
+
+  const authFetch = async (url, options = {}) => {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    if (res.status === 401) {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('token');
+    }
+    return res;
+  };
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-    ChartJS.defaults.color = theme === 'dark' ? '#f8fafc' : '#0f172a';
-  }, [theme]);
-
-  async function loadData() {
-    try {
-      const [s, f] = await Promise.all([fetch(`${API}/api/stats`), fetch(`${API}/api/flights`)]);
-      setStats(await s.json());
-      setFlights(await f.json());
-    } catch (err) {
-      console.error("Laden fehlgeschlagen:", err);
+    if (token) {
+      authFetch(`${API}/api/me`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) setUser(data);
+          else {
+            setToken(null);
+            localStorage.removeItem('token');
+          }
+        });
     }
-  }
+  }, [token]);
 
-  useEffect(() => { loadData(); }, []);
+  const [rates, setRates] = useState([]);
+  useEffect(() => {
+    if (token && user) {
+      authFetch(`${API}/api/aircraft/rates`).then(res => res.json()).then(setRates);
+    }
+  }, [token, user]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [sRes, fRes] = await Promise.all([
+        authFetch(`${API}/api/stats`),
+        authFetch(`${API}/api/flights`)
+      ]);
+      const s = await sRes.json();
+      const f = await fRes.json();
+      setStats(s);
+      setFlights(f);
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (token && user) loadData();
+  }, [token, user]);
+
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const batchDelete = async () => {
     if (!confirm(`${selectedIds.length} Flüge löschen?`)) return;
-    await fetch(`${API}/api/flights/delete-batch`, {
+    await authFetch(`${API}/api/flights/delete-batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: selectedIds })
@@ -888,25 +1022,98 @@ function App() {
     loadData();
   };
 
+  const loadSettingsData = async () => {
+    const [cRes, tRes, tmRes, sRes] = await Promise.all([
+      authFetch(`${API}/api/clubs`),
+      authFetch(`${API}/api/trainings`),
+      authFetch(`${API}/api/csv-templates`),
+      authFetch(`${API}/api/settings`)
+    ]);
+    setClubs(await cRes.json());
+    setTrainings(await tRes.json());
+    setTemplates(await tmRes.json());
+    setSettings(await sRes.json());
+  };
+
+  useEffect(() => {
+    if (view === 'settings' && token && user) loadSettingsData();
+  }, [view, token, user]);
+
+  const saveClub = async (club) => {
+    const url = club.id ? `${API}/api/clubs/${club.id}` : `${API}/api/clubs`;
+    const method = club.id ? 'PUT' : 'POST';
+    await authFetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(club)
+    });
+    loadSettingsData();
+  };
+
+  const deleteClub = async (id) => {
+    await authFetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
+    loadSettingsData();
+  };
+
+  const reconcile = async () => {
+    const res = await authFetch(`${API}/api/reconcile`, { method: 'POST' });
+    if (res.ok) {
+      alert('Abgleich erfolgreich gestartet');
+      loadData();
+    }
+  };
+
+  const resetMatches = async () => {
+    if (confirm('Alle Verknüpfungen wirklich löschen?')) {
+      await authFetch(`${API}/api/reconcile/reset`, { method: 'POST' });
+      loadData();
+    }
+  };
+
+  const saveSetting = async (key, value) => {
+    await authFetch(`${API}/api/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, value })
+    });
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  if (!token || !user) {
+    return <LoginView onLogin={(data) => {
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+    }} />;
+  }
+
   return (
     <div className="app-container">
+      {user.requires_password_change && <ChangePasswordDialog onComplete={() => {
+        authFetch(`${API}/api/me`).then(res => res.json()).then(setUser);
+      }} />}
+      
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
-        <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
+        <button onClick={() => setView('dashboard')} className="nav-btn" style={{ background: view === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
           <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
         </button>
-        <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <Plane size={16} style={{ marginRight: 8 }} /> Flüge
+        <button onClick={() => setView('flights')} className="nav-btn" style={{ background: view === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
+          <Database size={16} style={{ marginRight: 8 }} /> Flugbuch
         </button>
-        <button onClick={() => setActiveTab('forecast')} className="nav-btn" style={{ background: activeTab === 'forecast' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'forecast' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <TrendingUp size={16} style={{ marginRight: 8 }} /> Forecast
-        </button>
-        <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <Upload size={16} style={{ marginRight: 8 }} /> Import
-        </button>
-        <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
+        <button onClick={() => setView('settings')} className="nav-btn" style={{ background: view === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: view === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
           <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
         </button>
         <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginRight: 8 }}>
+          <Activity size={12} style={{ display: 'inline', marginRight: 4 }} /> {user.username}
+        </div>
+        <button className="nav-btn" style={{ color: '#f87171' }} onClick={() => {
+          setToken(null);
+          setUser(null);
+          localStorage.removeItem('token');
+        }}>
+          Logout
+        </button>
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="nav-btn"
@@ -920,7 +1127,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.2.5</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.3.0</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
