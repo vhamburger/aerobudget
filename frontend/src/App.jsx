@@ -292,6 +292,15 @@ function FlightTable({ flights, authFetch }) {
     a.remove();
   };
 
+  const handleViewInvoice = async (invoiceId) => {
+    const res = await authFetch(`${API}/api/invoices/${invoiceId}/pdf`);
+    if (res.ok) {
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    }
+  };
+
   const filteredFlights = flights.filter(f => {
     const s = searchTerm.toLowerCase();
     const dateStr = formatDate(f.date).toLowerCase();
@@ -396,9 +405,13 @@ function FlightTable({ flights, authFetch }) {
                       <div style={{ display: 'flex', alignItems: 'center' }}>
                         <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
                         {f.invoice_id && (
-                          <a href={`${API}/api/invoices/${f.invoice_id}/pdf`} target="_blank" rel="noreferrer" style={{ color: 'inherit', marginLeft: 6 }}>
-                            <FileText size={14} style={{ opacity: 0.6 }} title={t('flights.table.showInvoice')} />
-                          </a>
+                          <button 
+                            onClick={() => handleViewInvoice(f.invoice_id)} 
+                            style={{ background: 'none', border: 'none', color: 'inherit', marginLeft: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            title={t('flights.table.showInvoice')}
+                          >
+                            <FileText size={14} style={{ opacity: 0.6 }} />
+                          </button>
                         )}
                       </div>
                       {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t('flights.table.flightFee', { cost: formatCurrency(f.flight_cost) })}</span>}
@@ -1201,16 +1214,16 @@ function App() {
                 <button 
                   className="nav-btn" 
                   style={{ flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', background: i18n.language === 'de' ? 'rgba(56,189,248,0.2)' : 'transparent', color: i18n.language === 'de' ? '#38bdf8' : 'var(--text-secondary)' }}
-                  onClick={() => handleLanguageChange('de')}
+                  onClick={(e) => { e.stopPropagation(); handleLanguageChange('de'); setShowUserMenu(false); }}
                 >
-                  DE
+                  <span style={{ marginRight: 6 }}>🇦🇹</span> DE
                 </button>
                 <button 
                   className="nav-btn" 
                   style={{ flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', background: i18n.language.startsWith('en') ? 'rgba(56,189,248,0.2)' : 'transparent', color: i18n.language.startsWith('en') ? '#38bdf8' : 'var(--text-secondary)' }}
-                  onClick={() => handleLanguageChange('en')}
+                  onClick={(e) => { e.stopPropagation(); handleLanguageChange('en'); setShowUserMenu(false); }}
                 >
-                  EN
+                  <span style={{ marginRight: 6 }}>🇬🇧</span> EN
                 </button>
               </div>
 
@@ -1244,7 +1257,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.3.0</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.4.0</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
