@@ -80,5 +80,4 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Column migrations for existing databases
--- These will fail silently if columns already exist
-ALTER TABLE users ADD COLUMN locale TEXT DEFAULT 'de';
+-- These will be handled in Go code to avoid stopping on "duplicate column" errors

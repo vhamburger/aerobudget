@@ -55,7 +55,8 @@ func InitDB(dbPath string) error {
 		`ALTER TABLE clubs ADD COLUMN invoice_number_keyword TEXT DEFAULT ''`,
 		`ALTER TABLE clubs ADD COLUMN invoice_number_numeric_only INTEGER DEFAULT 0`,
 		`ALTER TABLE invoices ADD COLUMN file_hash TEXT DEFAULT ''`,
-		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, role TEXT, requires_password_change INTEGER)`,
+		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, role TEXT, requires_password_change INTEGER, locale TEXT DEFAULT 'de')`,
+		`ALTER TABLE users ADD COLUMN locale TEXT DEFAULT 'de'`,
 	}
 	migrationCount := 0
 	for _, m := range migrations {
