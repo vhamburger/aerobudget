@@ -1009,13 +1009,15 @@ function App() {
   }, [user, i18n]);
 
   const handleLanguageChange = async (lng) => {
-    i18n.changeLanguage(lng);
+    await i18n.changeLanguage(lng);
     if (token) {
       await authFetch(`${API}/api/user/locale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ locale: lng })
       });
+      setUser(prev => prev ? { ...prev, locale: lng } : null);
+      loadData();
     }
   };
 
@@ -1129,8 +1131,8 @@ function App() {
   const reconcile = async () => {
     const res = await authFetch(`${API}/api/reconcile`, { method: 'POST' });
     if (res.ok) {
-      alert('Abgleich erfolgreich gestartet');
-      loadData();
+      alert(t('settings.reconcileComplete'));
+      setTimeout(loadData, 500); // Give backend a moment to start processing
     }
   };
 
