@@ -1,37 +1,112 @@
-# Aerobudget
+# Aerobudget ✈️💰
 
-A self-hosted, containerized web application for private pilots to track flight costs, match logbooks with invoices, and analyze flying expenses.
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/vhamburger/aerobudget)
+[![Docker](https://img.shields.io/badge/docker-linux/amd64-orange.svg)](https://hub.docker.com/r/vhamburger/aerobudget)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-[🇩🇪 Deutsche Version](#aerobudget---deutsch)
-
-## Features
-- **Generic CSV Import**: Import flight logbooks (e.g., from "B4 takeoff") using customizable templates.
-- **Automated Invoice Matching**: Drop PDF invoices into a folder. The app uses OCR to extract aircraft registrations and matches costs to your logged flights.
-- **Configurable Billing**: Supports per-minute, block-time, or custom billing structures per flying club.
-- **Advanced Dashboards**: Visualize your expenses by aircraft, trip, training (e.g., PPL, IFR), and view your flights on an interactive world map.
-- **Cost Forecasting**: Estimate future trips based on historical costs per aircraft and destination.
-- **Synology / Portainer Ready**: Designed to run as a single Docker container with persistent volumes for data and invoices.
-
-## Quick Start (Docker)
-1. Clone this repository.
-2. Edit the volume paths in `docker-compose.yml` if necessary.
-3. Run: `docker-compose up -d`
+**Aerobudget** is a self-hosted, privacy-first web application designed for private pilots to manage their flight expenses. It bridges the gap between your digital logbook and your pile of PDF invoices, providing a clear overview of what you actually pay for your passion.
 
 ---
 
-# Aerobudget - Deutsch
+## 🚀 Core Concepts
 
-Eine selbst gehostete, containerisierte Webanwendung für Privatpiloten, um Flugkosten zu tracken, Logbücher mit Rechnungen abzugleichen und Ausgaben zu analysieren.
+Aerobudget works by correlating two main data sources:
+1. **Logbook Data (CSV)**: Your records of where and when you flew.
+2. **Invoice Data (PDF)**: The actual bills from your flying clubs or charter companies.
 
-## Funktionen
-- **Generischer CSV-Import**: Importiere Fluglogbücher (z. B. von "B4 takeoff") über anpassbare Templates.
-- **Automatischer Rechnungsabgleich**: Lege PDF-Rechnungen einfach in einen Ordner. Die App nutzt OCR, um Flugzeugkennzeichen zu extrahieren, und ordnet die Kosten deinen geloggten Flügen zu.
-- **Konfigurierbare Abrechnung**: Unterstützt minunten-genaue Abrechnung (Flugzeit), Blockzeit oder benutzerdefinierte Strukturen pro Flugverein.
-- **Fortschrittliche Dashboards**: Visualisiere deine Ausgaben nach Flugzeug, Trip, Ausbildungsart (z.B. PPL, IFR) und betrachte deine Flüge auf einer interaktiven Weltkarte.
-- **Kostenprognose**: Schätze zukünftige Trips basierend auf historischen Kosten pro Flugzeug und Ziel.
-- **Synology / Portainer Ready**: Entwickelt als einzelner Docker-Container mit persistenten Volumes für Daten und Rechnungen.
+The app automatically matches these based on **Aircraft Registration**, **Date**, and **Time**, giving you a detailed breakdown of flight fees, landing fees, and approach fees for every single entry.
 
-## Schnellstart (Docker)
-1. Repository klonen.
-2. Volumepfade in der `docker-compose.yml` bei Bedarf anpassen.
-3. Ausführen: `docker-compose up -d`
+---
+
+## 🛠 Installation
+
+### Using Docker Compose (Recommended)
+
+Aerobudget is designed to run as a single container. Here is a sample `docker-compose.yml`:
+
+```yaml
+version: '3.8'
+services:
+  aerobudget:
+    image: vhamburger/aerobudget:latest
+    container_name: aerobudget
+    ports:
+      - "8011:8080"
+    volumes:
+      - ./data:/app/data                # Database and config
+      - ./invoices:/app/data/invoices   # Drop your PDF invoices here
+    environment:
+      - ADMIN_USER=admin
+      - ADMIN_PASSWORD=admin            # Change this on first login!
+      - DB_PATH=/app/data/aerobudget.db
+      - INVOICE_WATCH_DIR=/app/data/invoices
+    restart: unless-stopped
+```
+
+### Portainer / Synology Setup
+1. Create a new Stack or Container.
+2. Map port `8080` (container) to your desired host port (e.g., `8011`).
+3. Map the two volumes mentioned above to persistent paths on your host.
+4. Set the environment variables.
+
+---
+
+## ✨ Features
+
+### 📂 CSV Import & Profiles
+- **Flexible Mapping**: Use customizable templates to import CSV exports from common logbook apps (e.g., "B4 takeoff").
+- **Column Matching**: Map your CSV columns (Date, Aircraft, Departure, Arrival, etc.) once and reuse the profile.
+- **Bulk Import**: Process hundreds of flights in seconds.
+
+### 🏢 Flying Clubs & Invoice Profiles
+- **Heuristic Parsing**: Define "Clubs" with specific search terms. Aerobudget scans PDF invoices for these terms to identify the issuer.
+- **Cost Breakdown**: Configure keywords for each club to distinguish between:
+    - **Flight Fees** (The dry/wet rate of the aircraft)
+    - **Landing Fees**
+    - **Approach Fees** (ACG/DFS fees)
+- **Automatic Matching**: The "Reconcile" button automatically pairs invoices with logbook entries based on the aircraft and date.
+
+### 📊 Training Management
+- **Progress Tracking**: Define training periods (e.g., "PPL Training", "IFR Rating").
+- **Auto-Detection**: The app identifies flights within these date ranges and marks them as training flights in your statistics.
+- **Cost Analysis**: See exactly how much your license or rating has cost you so far.
+
+### 📈 Dashboard & Logbook
+- **Interactive Stats**: Total costs, cost per aircraft, monthly spending, and more.
+- **Visual Maps**: View your flight paths on an integrated map.
+- **Detailed Table**: A searchable, filterable logbook showing the status of every flight (matched vs. unmatched).
+
+---
+
+## 🔍 Troubleshooting & Logs
+
+### Debug Logging
+If the PDF parser is not extracting data correctly:
+1. Go to **Settings** -> **Advanced**.
+2. Enable **Debug Mode**.
+3. Re-run the import or drop a file.
+
+### Viewing Logs
+- **Docker**: Run `docker logs -f aerobudget` to see the backend logs in real-time.
+- **Portainer**: Click the "Logs" icon on the container details page.
+- Look for `[Parser]` or `[Watcher]` tags to see how the OCR interprets your files.
+
+---
+
+## 🛡 Privacy & Disclaimer
+
+- **100% Local**: Aerobudget does **not** send any data to the cloud. All PDF parsing and database storage happen locally on your server.
+- **Security**: The app uses JWT-based authentication. Always change the default admin password immediately.
+- **Accuracy**: While the OCR is robust, always verify critical financial data manually.
+
+---
+
+## 📜 License & Forking
+
+Aerobudget is released under the **MIT License**. 
+- You are free to use, share, and modify the code.
+- **Forks are encouraged!** If you build a parser for a specific club or add a new feature, feel free to open a Pull Request.
+
+---
+
+*Made with ❤️ for the General Aviation community.*
