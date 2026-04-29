@@ -49,6 +49,7 @@ type User struct {
 	PasswordHash           string `json:"-" db:"password_hash"`
 	Role                   string `json:"role" db:"role"`
 	RequiresPasswordChange bool   `json:"requires_password_change" db:"requires_password_change"`
+	Locale                 string `json:"locale" db:"locale"`
 }
 
 type Training struct {

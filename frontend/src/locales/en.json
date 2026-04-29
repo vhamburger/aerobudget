@@ -1,0 +1,87 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "flights": "Logbook",
+    "forecast": "Forecast",
+    "import": "Import",
+    "settings": "Settings",
+    "logout": "Logout",
+    "changePassword": "Change Password"
+  },
+  "login": {
+    "welcome": "Welcome back",
+    "subtitle": "Please log in to continue.",
+    "username": "Username",
+    "password": "Password",
+    "submit": "Login",
+    "error": "Invalid credentials"
+  },
+  "dashboard": {
+    "totalCosts": "Total Costs",
+    "avgCost": "Avg / hr",
+    "totalHours": "Flight Time",
+    "flights": "Flights",
+    "costsByAircraft": "Flight Time per Aircraft",
+    "monthlyEvolution": "Cost Evolution",
+    "trainingBreakdown": "Training Costs",
+    "noTrainingActive": "No active training",
+    "last12Months": "Last 12 Months",
+    "showAll": "Show all",
+    "noData": "No data available",
+    "cost": "Cost"
+  },
+  "flights": {
+    "title": "All Flights",
+    "search": "Search...",
+    "from": "From:",
+    "to": "To:",
+    "export": "Export",
+    "deleteSelected": "Delete Selected",
+    "table": {
+      "date": "Date",
+      "aircraft": "Aircraft",
+      "departure": "From",
+      "arrival": "To",
+      "block": "Block",
+      "flight": "Flight",
+      "rule": "Rule",
+      "training": "Training",
+      "cost": "Cost",
+      "details": "Details",
+      "showOnly": "Show only {{aircraft}}",
+      "showInvoice": "Show invoice",
+      "flightFee": "Flight: {{cost}}",
+      "landingFee": "Ldg: {{cost}}",
+      "approachFee": "ACG: {{cost}}"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "dataManagement": "Data Management",
+    "clubsAndBilling": "Clubs & Billing",
+    "trainings": "Trainings",
+    "csvTemplates": "CSV Import Formats",
+    "advanced": "Advanced Functions",
+    "addClub": "Add Club",
+    "addAircraft": "Add Aircraft",
+    "addTemplate": "Add Template",
+    "addTraining": "Add Training",
+    "confirmDeleteClub": "Are you sure you want to delete this club?",
+    "confirmResetReconcile": "Are you sure you want to delete all invoice links? Data will be recalculated during the next reconcile.",
+    "reconcileComplete": "Matching complete.",
+    "reconcileReset": "Links deleted.",
+    "sectionTitle": "SETTINGS"
+  },
+  "import": {
+    "title": "Import",
+    "pdf": "Invoices (PDF)",
+    "csv": "Logbook (CSV)",
+    "selectClub": "Select Club",
+    "selectTemplate": "Select Template",
+    "selectFiles": "Select Files",
+    "selectCSV": "Select CSV",
+    "uploading": "Loading...",
+    "dropFiles": "Drop files here or click",
+    "success": "Import successful"
+  }
+}

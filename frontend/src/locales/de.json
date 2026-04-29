@@ -1,0 +1,87 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "flights": "Flugbuch",
+    "forecast": "Forecast",
+    "import": "Import",
+    "settings": "Einstellungen",
+    "logout": "Logout",
+    "changePassword": "Passwort ändern"
+  },
+  "login": {
+    "welcome": "Willkommen zurück",
+    "subtitle": "Bitte melde dich an, um fortzufahren.",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "error": "Ungültige Anmeldedaten"
+  },
+  "dashboard": {
+    "totalCosts": "Gesamtkosten",
+    "avgCost": "Ø / h",
+    "totalHours": "Flugzeit",
+    "flights": "Flüge",
+    "costsByAircraft": "Flugzeit pro Flugzeug",
+    "monthlyEvolution": "Kostenentwicklung",
+    "trainingBreakdown": "Ausbildungskosten",
+    "noTrainingActive": "Keine Ausbildung aktiv",
+    "last12Months": "Letzte 12 Monate",
+    "showAll": "Alle anzeigen",
+    "noData": "Keine Daten verfügbar",
+    "cost": "Kosten"
+  },
+  "flights": {
+    "title": "Alle Flüge",
+    "search": "Suche...",
+    "from": "Von:",
+    "to": "Bis:",
+    "export": "Export",
+    "deleteSelected": "Markierte löschen",
+    "table": {
+      "date": "Datum",
+      "aircraft": "Kennzeichen",
+      "departure": "Von",
+      "arrival": "Nach",
+      "block": "Block",
+      "flight": "Flug",
+      "rule": "Art",
+      "training": "Schulung",
+      "cost": "Kosten",
+      "details": "Details",
+      "showOnly": "Nur {{aircraft}} anzeigen",
+      "showInvoice": "Rechnung anzeigen",
+      "flightFee": "Flug: {{cost}}",
+      "landingFee": "Ldg: {{cost}}",
+      "approachFee": "ACG: {{cost}}"
+    }
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "dataManagement": "Datenverwaltung",
+    "clubsAndBilling": "Vereine & Aufschlüsselung",
+    "trainings": "Ausbildungen",
+    "csvTemplates": "CSV Import Formate",
+    "advanced": "Fortgeschrittene Funktionen",
+    "addClub": "Verein hinzufügen",
+    "addAircraft": "Flugzeug hinzufügen",
+    "addTemplate": "Template hinzufügen",
+    "addTraining": "Schulung hinzufügen",
+    "confirmDeleteClub": "Verein wirklich löschen?",
+    "confirmResetReconcile": "Alle Rechnungsverknüpfungen wirklich löschen? Die Daten werden beim nächsten Reconcile neu berechnet.",
+    "reconcileComplete": "Matching abgeschlossen.",
+    "reconcileReset": "Verknüpfungen gelöscht.",
+    "sectionTitle": "EINSTELLUNGEN"
+  },
+  "import": {
+    "title": "Import",
+    "pdf": "Rechnungen (PDF)",
+    "csv": "Flugbuch (CSV)",
+    "selectClub": "Verein auswählen",
+    "selectTemplate": "Template auswählen",
+    "selectFiles": "Dateien auswählen",
+    "selectCSV": "CSV auswählen",
+    "uploading": "Lädt...",
+    "dropFiles": "Dateien hier ablegen oder klicken",
+    "success": "Erfolgreich importiert"
+  }
+}

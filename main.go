@@ -116,6 +116,18 @@ func main() {
 			db.DB.Exec("UPDATE users SET password_hash = ?, requires_password_change = 0 WHERE username = ?", hash, claims.Username)
 			w.WriteHeader(200)
 		})
+		
+		r.Post("/api/user/locale", func(w http.ResponseWriter, r *http.Request) {
+			var req struct {
+				Locale string `json:"locale"`
+			}
+			json.NewDecoder(r.Body).Decode(&req)
+			authHeader := r.Header.Get("Authorization")[7:]
+			claims, _ := auth.ValidateToken(authHeader)
+
+			db.DB.Exec("UPDATE users SET locale = ? WHERE username = ?", req.Locale, claims.Username)
+			w.WriteHeader(200)
+		})
 
 	// --- FLIGHTS API ---
 	r.Get("/api/flights", func(w http.ResponseWriter, r *http.Request) {

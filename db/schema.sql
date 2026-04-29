@@ -75,8 +75,10 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT DEFAULT 'admin',
-    requires_password_change INTEGER DEFAULT 0
+    requires_password_change INTEGER DEFAULT 0,
+    locale TEXT DEFAULT 'de'
 );
 
 -- Column migrations for existing databases
 -- These will fail silently if columns already exist
+ALTER TABLE users ADD COLUMN locale TEXT DEFAULT 'de';

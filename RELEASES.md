@@ -1,10 +1,13 @@
 # Aerobudget Release Notes
 
-## [1.3.0] - 2026-04-28
+## [1.4.0] - 2026-04-29
 ### Added
-- **User Authentication**: Secure login system with JWT-based API protection (bcrypt + JWT).
-- **Forced Password Change**: Mandatory password update flow for initial setup.
-- **Enhanced UI**: Added user profile and session management.
+- **Internationalization (i18n)**: Support for German and English (UI and data).
+- **Locale-aware Parsing**: Automatic detection of decimal/date formats (DE/EN).
+- **Language Persistence**: User-specific language settings stored in database.
+- **Mock Data**: Sample CSVs and PDFs for both locales included.
+
+## [1.3.0] - 2026-04-28
 
 ## [1.2.5] - 2026-04-28
 ### Added

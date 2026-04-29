@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders, LogOut } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import i18n from './i18n';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders, LogOut, Globe } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
@@ -12,6 +14,7 @@ ChartJS.defaults.font.family = "'Inter', sans-serif";
 const API = '';
 
 function LoginView({ onLogin }) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +30,7 @@ function LoginView({ onLogin }) {
       const data = await res.json();
       onLogin(data);
     } else {
-      setError('Ungültige Anmeldedaten');
+      setError(t('login.error'));
     }
   };
 
@@ -36,20 +39,20 @@ function LoginView({ onLogin }) {
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img src={logo} alt="Logo" style={{ height: '80px', marginBottom: '16px' }} />
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Willkommen zurück</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Bitte melde dich an, um fortzufahren.</p>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 600 }}>{t('login.welcome')}</h1>
+          <p style={{ color: 'var(--text-secondary)' }}>{t('login.subtitle')}</p>
         </div>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Benutzername</label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>{t('login.username')}</label>
             <input type="text" className="input-field" value={username} onChange={e => setUsername(e.target.value)} required />
           </div>
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>Passwort</label>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem' }}>{t('login.password')}</label>
             <input type="password" className="input-field" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
           {error && <p style={{ color: '#ef4444', marginBottom: '16px', textAlign: 'center' }}>{error}</p>}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Anmelden</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{t('login.submit')}</button>
         </form>
       </div>
     </div>
@@ -125,16 +128,16 @@ function formatMinutes(mins) {
 
 function formatDate(isoDate) {
   if (!isoDate) return '';
-  const [y, m, d] = isoDate.split('-');
-  return `${d}.${m}.${y}`;
+  const date = new Date(isoDate);
+  return new Intl.DateTimeFormat(i18n.language).format(date);
 }
 
 function formatNumber(val, decimals = 0) {
-  return new Intl.NumberFormat('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(val);
+  return new Intl.NumberFormat(i18n.language, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(val);
 }
 
 function formatCurrency(val) {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
+  return new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'EUR' }).format(val);
 }
 
 function getColor(str) {
@@ -148,6 +151,7 @@ function getColor(str) {
 }
 
 function Dashboard({ stats, flights, theme }) {
+  const { t } = useTranslation();
   const [showAllMonths, setShowAllMonths] = useState(false);
   const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
   
@@ -172,25 +176,25 @@ function Dashboard({ stats, flights, theme }) {
       <main className="dashboard-grid">
         <div className="glass-panel" style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', gridColumn: '1 / -1' }}>
           <div style={{ flex: 1, minWidth: '140px' }}>
-            <div className="stat-label"><Activity size={14} style={{ display: 'inline', marginRight: 4 }} />Flüge</div>
+            <div className="stat-label"><Activity size={14} style={{ display: 'inline', marginRight: 4 }} />{t('dashboard.flights')}</div>
             <div className="stat-value">{stats?.total_flights ?? 0}</div>
           </div>
           <div style={{ flex: 1, minWidth: '140px' }}>
-            <div className="stat-label"><Clock size={14} style={{ display: 'inline', marginRight: 4 }} />Flugzeit</div>
+            <div className="stat-label"><Clock size={14} style={{ display: 'inline', marginRight: 4 }} />{t('dashboard.totalHours')}</div>
             <div className="stat-value">{formatMinutes(stats?.total_flight_minutes ?? 0)}</div>
           </div>
           <div style={{ flex: 1, minWidth: '140px' }}>
-            <div className="stat-label"><Euro size={14} style={{ display: 'inline', marginRight: 4 }} />Kosten</div>
+            <div className="stat-label"><Euro size={14} style={{ display: 'inline', marginRight: 4 }} />{t('dashboard.cost')}</div>
             <div className="stat-value">{formatCurrency(stats?.total_cost ?? 0)}</div>
           </div>
           <div style={{ flex: 1, minWidth: '140px' }}>
-            <div className="stat-label"><TrendingUp size={14} style={{ display: 'inline', marginRight: 4 }} />Ø / h</div>
+            <div className="stat-label"><TrendingUp size={14} style={{ display: 'inline', marginRight: 4 }} />{t('dashboard.avgCost')}</div>
             <div className="stat-value">{formatNumber(stats?.cost_per_hour ?? 0)} €</div>
           </div>
         </div>
 
         <div className="glass-panel">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> Ausbildungskosten</h2>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><GraduationCap size={18} /> {t('dashboard.trainingBreakdown')}</h2>
           {trainingLabels.length > 0 ? (
             <Pie
               key={`training-${theme}`}
@@ -215,11 +219,11 @@ function Dashboard({ stats, flights, theme }) {
                 }
               }}
             />
-          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Ausbildung aktiv</p>}
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>{t('dashboard.noTrainingActive')}</p>}
         </div>
 
         <div className="glass-panel">
-          <h2>Flugzeit pro Flugzeug</h2>
+          <h2>{t('dashboard.costsByAircraft')}</h2>
           <Doughnut
             key={`aircraft-${theme}`}
             data={{
@@ -238,13 +242,13 @@ function Dashboard({ stats, flights, theme }) {
 
         <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2>Kostenentwicklung</h2>
+            <h2>{t('dashboard.monthlyEvolution')}</h2>
             <button 
               onClick={() => setShowAllMonths(!showAllMonths)}
               className="nav-btn" 
               style={{ fontSize: '0.8rem', padding: '4px 12px', background: 'rgba(56,189,248,0.1)' }}
             >
-              {showAllMonths ? 'Letzte 12 Monate' : 'Alle anzeigen'}
+              {showAllMonths ? t('dashboard.last12Months') : t('dashboard.showAll')}
             </button>
           </div>
           {months.length > 0 ? (
@@ -252,7 +256,7 @@ function Dashboard({ stats, flights, theme }) {
               key={`costs-${theme}`}
               data={{
                 labels: months,
-                datasets: [{ label: 'Kosten', data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
+                datasets: [{ label: t('dashboard.cost'), data: costs, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', tension: 0.4, fill: true }]
               }}
               options={{ 
                 responsive: true, 
@@ -263,7 +267,7 @@ function Dashboard({ stats, flights, theme }) {
                 }
               }}
             />
-          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>Keine Daten verfügbar</p>}
+          ) : <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '20px' }}>{t('dashboard.noData')}</p>}
         </div>
       </main>
     </>
@@ -271,6 +275,7 @@ function Dashboard({ stats, flights, theme }) {
 }
 
 function FlightTable({ flights, authFetch }) {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -309,20 +314,20 @@ function FlightTable({ flights, authFetch }) {
   return (
     <div className="glass-panel">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>Alle Flüge ({filteredFlights.length})</h2>
+        <h2 style={{ margin: 0 }}>{t('flights.title')} ({filteredFlights.length})</h2>
         
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '8px' }}>
-            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Von:</span>
+            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>{t('flights.from')}</span>
             <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" style={{ padding: '4px', border: 'none', background: 'transparent' }} />
-            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Bis:</span>
+            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>{t('flights.to')}</span>
             <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" style={{ padding: '4px', border: 'none', background: 'transparent' }} />
           </div>
 
           <div style={{ position: 'relative', width: '240px' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }} />
             <input 
-              placeholder="Suche..." 
+              placeholder={t('flights.search')}
               value={searchTerm} 
               onChange={e => setSearchTerm(e.target.value)}
               className="input-field"
@@ -334,7 +339,7 @@ function FlightTable({ flights, authFetch }) {
           </div>
 
           <button onClick={handleExport} className="nav-btn" style={{ background: 'rgba(56,189,248,0.1)', color: '#38bdf8', border: 'none', cursor: 'pointer' }}>
-            <FileSpreadsheet size={16} style={{ marginRight: 8 }} /> Export
+            <FileSpreadsheet size={16} style={{ marginRight: 8 }} /> {t('flights.export')}
           </button>
         </div>
       </div>
@@ -342,7 +347,18 @@ function FlightTable({ flights, authFetch }) {
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(128,128,128,0.2)' }}>
-              {['Datum', 'Kennzeichen', 'Von', 'Nach', 'Block', 'Flug', 'Art', 'Schulung', 'Kosten', 'Details'].map(h => (
+              {[
+                t('flights.table.date'), 
+                t('flights.table.aircraft'), 
+                t('flights.table.departure'), 
+                t('flights.table.arrival'), 
+                t('flights.table.block'), 
+                t('flights.table.flight'), 
+                t('flights.table.rule'), 
+                t('flights.table.training'), 
+                t('flights.table.cost'), 
+                t('flights.table.details')
+              ].map(h => (
                 <th key={h} style={{ padding: '12px', textAlign: 'left', color: 'var(--text-secondary)' }}>{h}</th>
               ))}
             </tr>
@@ -355,7 +371,7 @@ function FlightTable({ flights, authFetch }) {
                   <button 
                     onClick={() => setSearchTerm(f.aircraft)}
                     style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 4, padding: '2px 8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}
-                    title={`Nur ${f.aircraft} anzeigen`}
+                    title={t('flights.table.showOnly', { aircraft: f.aircraft })}
                   >
                     {f.aircraft}
                   </button>
@@ -381,19 +397,19 @@ function FlightTable({ flights, authFetch }) {
                         <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
                         {f.invoice_id && (
                           <a href={`${API}/api/invoices/${f.invoice_id}/pdf`} target="_blank" rel="noreferrer" style={{ color: 'inherit', marginLeft: 6 }}>
-                            <FileText size={14} style={{ opacity: 0.6 }} title="Rechnung anzeigen" />
+                            <FileText size={14} style={{ opacity: 0.6 }} title={t('flights.table.showInvoice')} />
                           </a>
                         )}
                       </div>
-                      {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Flug: {formatCurrency(f.flight_cost)}</span>}
+                      {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t('flights.table.flightFee', { cost: formatCurrency(f.flight_cost) })}</span>}
                     </div>
                   ) : (
                     <span style={{ color: 'var(--text-secondary)' }}>—</span>
                   )}
                 </td>
                 <td style={{ padding: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                  {f.landing_fee > 0 && <div>Ldg: {formatCurrency(f.landing_fee)}</div>}
-                  {f.approach_fee > 0 && <div>ACG: {formatCurrency(f.approach_fee)}</div>}
+                  {f.landing_fee > 0 && <div>{t('flights.table.landingFee', { cost: formatCurrency(f.landing_fee) })}</div>}
+                  {f.approach_fee > 0 && <div>{t('flights.table.approachFee', { cost: formatCurrency(f.approach_fee) })}</div>}
                   {!(f.landing_fee > 0 || f.approach_fee > 0) && <span style={{ opacity: 0.3 }}>—</span>}
                 </td>
               </tr>
@@ -506,6 +522,7 @@ function ForecastView({ authFetch }) {
 }
 
 function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, authFetch, loadData }) {
+  const { t } = useTranslation();
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
   const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
@@ -549,7 +566,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
   };
 
   const deleteClub = async (id) => {
-    if (!confirm('Verein wirklich löschen?')) return;
+    if (!confirm(t('settings.confirmDeleteClub'))) return;
     await authFetch(`${API}/api/clubs/${id}`, { method: 'DELETE' });
     refreshLocalData();
   };
@@ -557,13 +574,13 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
   const triggerReconcile = async () => {
     const res = await authFetch(`${API}/api/reconcile`, { method: 'POST' });
     const data = await res.json();
-    alert(`Matching abgeschlossen.`);
+    alert(t('settings.reconcileComplete'));
   };
 
   const resetReconcile = async () => {
-    if (!confirm('Alle Rechnungsverknüpfungen wirklich löschen? Die Daten werden beim nächsten Reconcile neu berechnet.')) return;
+    if (!confirm(t('settings.confirmResetReconcile'))) return;
     await authFetch(`${API}/api/reconcile/reset`, { method: 'POST' });
-    alert('Verknüpfungen gelöscht.');
+    alert(t('settings.reconcileReset'));
     window.location.reload();
   };
 
@@ -579,22 +596,22 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
   return (
     <div className="dashboard-grid" style={{ gridTemplateColumns: '260px 1fr' }}>
       <div className="glass-panel" style={{ height: 'fit-content' }}>
-        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', letterSpacing: '0.05em' }}>EINSTELLUNGEN</h3>
+        <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', letterSpacing: '0.05em' }}>{t('settings.sectionTitle')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <button onClick={() => setSubTab('data')} className="nav-btn" style={{ background: subTab === 'data' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'data' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <Database size={14} style={{ marginRight: 8 }} /> Datenverwaltung
+            <Database size={14} style={{ marginRight: 8 }} /> {t('settings.dataManagement')}
           </button>
           <button onClick={() => setSubTab('clubs')} className="nav-btn" style={{ background: subTab === 'clubs' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'clubs' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <Building2 size={14} style={{ marginRight: 8 }} /> Vereine & Aufschlüsselung
+            <Building2 size={14} style={{ marginRight: 8 }} /> {t('settings.clubsAndBilling')}
           </button>
           <button onClick={() => setSubTab('trainings')} className="nav-btn" style={{ background: subTab === 'trainings' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'trainings' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <GraduationCap size={14} style={{ marginRight: 8 }} /> Ausbildungen
+            <GraduationCap size={14} style={{ marginRight: 8 }} /> {t('settings.trainings')}
           </button>
           <button onClick={() => setSubTab('templates')} className="nav-btn" style={{ background: subTab === 'templates' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'templates' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <FileSpreadsheet size={14} style={{ marginRight: 8 }} /> CSV Import Formate
+            <FileSpreadsheet size={14} style={{ marginRight: 8 }} /> {t('settings.csvTemplates')}
           </button>
           <button onClick={() => setSubTab('advanced')} className="nav-btn" style={{ background: subTab === 'advanced' ? 'rgba(56,189,248,0.15)' : 'transparent', color: subTab === 'advanced' ? '#38bdf8' : 'inherit', justifyContent: 'flex-start' }}>
-            <Sliders size={14} style={{ marginRight: 8 }} /> Erweitert
+            <Sliders size={14} style={{ marginRight: 8 }} /> {t('settings.advanced')}
           </button>
         </div>
       </div>
@@ -897,6 +914,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
 }
 
 function ImportView({ onImported, authFetch }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -915,7 +933,7 @@ function ImportView({ onImported, authFetch }) {
     const file = e.target.files[0];
     if (!file) return;
     setLoading(true);
-    setStatus('Importiere...');
+    setStatus(t('import.uploading'));
     const form = new FormData();
     form.append('file', file);
     form.append('template_id', selectedTemplate);
@@ -933,11 +951,11 @@ function ImportView({ onImported, authFetch }) {
   return (
     <div className="glass-panel" style={{ textAlign: 'center', padding: '64px' }}>
       <Upload size={48} style={{ color: '#38bdf8', marginBottom: 16 }} />
-      <h2>Logbuch importieren</h2>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>Wähle ein Format und lade deine CSV Datei hoch</p>
+      <h2>{t('import.csv')}</h2>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>{t('import.dropFiles')}</p>
 
       <div style={{ marginBottom: 32, display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'center' }}>
-        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Format:</span>
+        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('import.selectTemplate')}:</span>
         <select
           value={selectedTemplate}
           onChange={e => setSelectedTemplate(e.target.value)}
@@ -951,7 +969,7 @@ function ImportView({ onImported, authFetch }) {
       <label style={{ cursor: 'pointer' }}>
         <input type="file" accept=".csv" onChange={handleUpload} style={{ display: 'none' }} />
         <span style={{ background: '#38bdf8', color: 'white', padding: '12px 24px', borderRadius: 8, fontWeight: 600 }}>
-          {loading ? 'Lädt...' : 'CSV auswählen'}
+          {loading ? t('import.uploading') : t('import.selectCSV')}
         </span>
       </label>
       {status && <p style={{ marginTop: 20 }}>{status}</p>}
@@ -960,6 +978,7 @@ function ImportView({ onImported, authFetch }) {
 }
 
 function App() {
+  const { t, i18n } = useTranslation();
   const [theme, setTheme] = useTheme();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
@@ -969,6 +988,23 @@ function App() {
   const [user, setUser] = useState(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPasswordChange, setShowPasswordChange] = useState(false);
+
+  useEffect(() => {
+    if (user && user.locale) {
+      i18n.changeLanguage(user.locale);
+    }
+  }, [user, i18n]);
+
+  const handleLanguageChange = async (lng) => {
+    i18n.changeLanguage(lng);
+    if (token) {
+      await authFetch(`${API}/api/user/locale`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locale: lng })
+      });
+    }
+  };
 
   const authFetch = async (url, options = {}) => {
     const res = await fetch(url, {
@@ -1123,19 +1159,19 @@ function App() {
       
       <nav className="glass-panel" style={{ margin: '24px', display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '12px 24px' }}>
         <button onClick={() => setActiveTab('dashboard')} className="nav-btn" style={{ background: activeTab === 'dashboard' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'dashboard' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <BarChart3 size={16} style={{ marginRight: 8 }} /> Dashboard
+          <BarChart3 size={16} style={{ marginRight: 8 }} /> {t('nav.dashboard')}
         </button>
         <button onClick={() => setActiveTab('flights')} className="nav-btn" style={{ background: activeTab === 'flights' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'flights' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <Database size={16} style={{ marginRight: 8 }} /> Flugbuch
+          <Database size={16} style={{ marginRight: 8 }} /> {t('nav.flights')}
         </button>
         <button onClick={() => setActiveTab('forecast')} className="nav-btn" style={{ background: activeTab === 'forecast' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'forecast' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <TrendingUp size={16} style={{ marginRight: 8 }} /> Forecast
+          <TrendingUp size={16} style={{ marginRight: 8 }} /> {t('nav.forecast')}
         </button>
         <button onClick={() => setActiveTab('import')} className="nav-btn" style={{ background: activeTab === 'import' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'import' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <Upload size={16} style={{ marginRight: 8 }} /> Import
+          <Upload size={16} style={{ marginRight: 8 }} /> {t('nav.import')}
         </button>
         <button onClick={() => setActiveTab('settings')} className="nav-btn" style={{ background: activeTab === 'settings' ? 'rgba(56,189,248,0.2)' : 'transparent', color: activeTab === 'settings' ? '#38bdf8' : 'var(--text-primary)' }}>
-          <Settings size={16} style={{ marginRight: 8 }} /> Einstellungen
+          <Settings size={16} style={{ marginRight: 8 }} /> {t('nav.settings')}
         </button>
         
         <div style={{ borderLeft: '1px solid rgba(128,128,128,0.3)', height: '24px', margin: '0 8px' }}></div>
@@ -1156,9 +1192,30 @@ function App() {
                 style={{ padding: '10px 16px', justifyContent: 'flex-start', borderRadius: 10, width: '100%', fontSize: '0.85rem' }} 
                 onClick={() => { setShowPasswordChange(true); setShowUserMenu(false); }}
               >
-                <RefreshCcw size={14} style={{ marginRight: 10, opacity: 0.7 }} /> Passwort ändern
+                <RefreshCcw size={14} style={{ marginRight: 10, opacity: 0.7 }} /> {t('nav.changePassword')}
               </button>
+              
               <div style={{ height: '1px', background: 'var(--glass-border)', margin: '4px 8px' }}></div>
+              
+              <div style={{ padding: '4px 8px', display: 'flex', gap: '4px' }}>
+                <button 
+                  className="nav-btn" 
+                  style={{ flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', background: i18n.language === 'de' ? 'rgba(56,189,248,0.2)' : 'transparent', color: i18n.language === 'de' ? '#38bdf8' : 'var(--text-secondary)' }}
+                  onClick={() => handleLanguageChange('de')}
+                >
+                  DE
+                </button>
+                <button 
+                  className="nav-btn" 
+                  style={{ flex: 1, justifyContent: 'center', padding: '6px', fontSize: '0.75rem', background: i18n.language.startsWith('en') ? 'rgba(56,189,248,0.2)' : 'transparent', color: i18n.language.startsWith('en') ? '#38bdf8' : 'var(--text-secondary)' }}
+                  onClick={() => handleLanguageChange('en')}
+                >
+                  EN
+                </button>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--glass-border)', margin: '4px 8px' }}></div>
+              
               <button 
                 className="nav-btn" 
                 style={{ padding: '10px 16px', justifyContent: 'flex-start', borderRadius: 10, width: '100%', fontSize: '0.85rem', color: '#f87171' }} 
@@ -1168,7 +1225,7 @@ function App() {
                   localStorage.removeItem('token');
                 }}
               >
-                <LogOut size={14} style={{ marginRight: 10, opacity: 0.7 }} /> Logout
+                <LogOut size={14} style={{ marginRight: 10, opacity: 0.7 }} /> {t('nav.logout')}
               </button>
             </div>
           )}
