@@ -73,7 +73,6 @@ services:
 
 ### 📈 Dashboard & Logbook
 - **Interactive Stats**: Total costs, cost per aircraft, monthly spending, and more.
-- **Visual Maps**: View your flight paths on an integrated map.
 - **Detailed Table**: A searchable, filterable logbook showing the status of every flight (matched vs. unmatched).
 
 ---

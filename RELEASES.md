@@ -8,6 +8,10 @@
 - **Mock Data**: Sample CSVs and PDFs for both locales included.
 
 ## [1.3.0] - 2026-04-28
+### Added
+- **User Authentication**: Secure login system with JWT-based API protection (bcrypt + JWT).
+- **Forced Password Change**: Mandatory password update flow for initial setup.
+- **Enhanced UI**: Added user profile and session management.
 
 ## [1.2.5] - 2026-04-28
 ### Added
