@@ -279,7 +279,6 @@ function Dashboard({ stats, flights, theme, airportData }) {
                   </tbody>
                 </table>
               </div>
-            </div>
           </div>
         </div>
 
