@@ -169,9 +169,11 @@ func main() {
 				Pilot         string  `db:"pilot" json:"pilot"`
 				Cost          float64 `db:"cost" json:"cost"`
 				FlightCost    float64 `db:"flight_cost" json:"flight_cost"`
+				FuelCost      float64 `db:"fuel_cost" json:"fuel_cost"`
 				LandingFee    float64 `db:"landing_fee" json:"landing_fee"`
 				ApproachFee   float64 `db:"approach_fee" json:"approach_fee"`
 				InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
+				ManualOverride bool    `db:"manual_override" json:"manual_override"`
 			}{}
 		}
 		w.Header().Set("Content-Type", "application/json")
