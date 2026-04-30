@@ -21,7 +21,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const VERSION = "1.5.2"
+const VERSION = "1.5.3"
 
 func main() {
 	log.Printf("=========================================")
@@ -318,17 +318,34 @@ func main() {
 			Year       int     `db:"year" json:"year"`
 			LandingFee float64 `db:"landing_fee" json:"landing_fee"`
 		}
-		var data []AirportYearly
-		db.DB.Select(&data, `SELECT icao, year, landing_fee FROM airfield_fees ORDER BY icao, year ASC`)
+		var yearly []AirportYearly
+		db.DB.Select(&yearly, `SELECT icao, year, landing_fee FROM airfield_fees ORDER BY icao, year ASC`)
 
-		// Organize by ICAO
-		result := make(map[string][]AirportYearly)
-		for _, d := range data {
-			result[d.ICAO] = append(result[d.ICAO], d)
+		type AirportSummary struct {
+			ICAO    string  `db:"icao" json:"icao"`
+			Total   float64 `db:"total" json:"total"`
+			Average float64 `db:"avg" json:"avg"`
+			Latest  float64 `db:"latest" json:"latest"`
+		}
+		var summary []AirportSummary
+		db.DB.Select(&summary, `
+			SELECT arrival as icao, SUM(landing_fee) as total, AVG(landing_fee) as avg, MAX(landing_fee) as latest
+			FROM flights
+			WHERE arrival != '' AND (landing_fee > 0 OR approach_fee > 0)
+			GROUP BY arrival
+			ORDER BY total DESC
+		`)
+
+		trends := make(map[string][]AirportYearly)
+		for _, d := range yearly {
+			trends[d.ICAO] = append(trends[d.ICAO], d)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"trends":  trends,
+			"summary": summary,
+		})
 	})
 
 
@@ -598,10 +615,9 @@ func main() {
 			SELECT aircraft, flight_cost, block_minutes, landing_fee, approach_fee
 			FROM flights
 			WHERE id IN (
-				SELECT id FROM flights f2 
-				WHERE f2.invoice_id IS NOT NULL AND f2.block_minutes > 0 AND f2.flight_cost > 0
-				GROUP BY f2.aircraft 
-				HAVING MAX(f2.date)
+				SELECT MAX(id) FROM flights 
+				WHERE invoice_id IS NOT NULL AND block_minutes > 0 AND flight_cost > 0
+				GROUP BY aircraft
 			)
 		`
 		rows, err := db.DB.Query(query)

@@ -42,7 +42,10 @@
     "airfieldInsights": "Flugplatz-Einblicke",
     "landingFeeTrend": "Landegebühren-Trend",
     "expensiveAirports": "Teuerste Flugplätze",
-    "cheapestAirports": "Günstigste Flugplätze"
+    "cheapestAirports": "Günstigste Flugplätze",
+    "totalPaid": "Gesamt bezahlt",
+    "avgFee": "∅ Gebühr",
+    "currentFee": "Aktuell"
   },
   "flights": {
     "title": "Alle Flüge",

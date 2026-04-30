@@ -1,5 +1,11 @@
 # Aerobudget Release Notes
 
+## [1.5.3] - 2026-04-30
+### Fixed
+- **Forecast selection**: Fixed a bug where aircraft dropdown was empty due to an overly strict database query.
+- **Airfield Data Accuracy**: Improved aggregate calculations for airfield fees using actual flight data.
+- **Airfield UI Refactor**: Completely redesigned the Airfield Insights section. It now shows a detailed list ordered by total costs, including average and latest fees.
+
 ## [1.5.2] - 2026-04-30
 ### Fixed
 - **Airfield Insights**: Fixed a bug where airfield fees were not saved during the automated reconcile process.

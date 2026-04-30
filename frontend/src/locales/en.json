@@ -42,7 +42,10 @@
     "airfieldInsights": "Airfield Insights",
     "landingFeeTrend": "Landing Fee Trend",
     "expensiveAirports": "Expensive Airports",
-    "cheapestAirports": "Cheapest Airports"
+    "cheapestAirports": "Cheapest Airports",
+    "totalPaid": "Total Paid",
+    "avgFee": "Avg Fee",
+    "currentFee": "Latest"
   },
   "flights": {
     "title": "All Flights",

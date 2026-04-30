@@ -243,16 +243,19 @@ function Dashboard({ stats, flights, theme, airportData }) {
             }}
           />
         </div>        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
-          <h2>{t('dashboard.airfieldInsights')}</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Map size={20} style={{ color: '#38bdf8' }} /> {t('dashboard.airfieldInsights')}
+          </h2>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', marginTop: 12 }}>
             <div>
               <h3 style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 16 }}>{t('dashboard.landingFeeTrend')}</h3>
-              {Object.keys(airportData || {}).length > 0 ? (
+              {Object.keys(airportData?.trends || {}).length > 0 ? (
                 <Line
                   data={{
-                    labels: [...new Set(Object.values(airportData).flat().map(d => d.year))].sort(),
-                    datasets: Object.entries(airportData).slice(0, 5).map(([icao, data]) => {
-                      const years = [...new Set(Object.values(airportData).flat().map(d => d.year))].sort();
+                    labels: [...new Set(Object.values(airportData.trends).flat().map(d => d.year))].sort(),
+                    datasets: Object.entries(airportData.trends).slice(0, 5).map(([icao, data]) => {
+                      const years = [...new Set(Object.values(airportData.trends).flat().map(d => d.year))].sort();
                       const values = years.map(y => {
                         const match = data.find(d => d.year === y);
                         if (match) return match.landing_fee;
@@ -263,45 +266,57 @@ function Dashboard({ stats, flights, theme, airportData }) {
                         label: icao,
                         data: values,
                         borderColor: getColor(icao),
-                        tension: 0.3
+                        tension: 0.3,
+                        pointRadius: 4,
+                        borderWidth: 2
                       };
                     })
                   }}
                   options={{
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10, color: textColor } } },
-                    scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
+                    plugins: { 
+                      legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, color: textColor } } 
+                    },
+                    scales: { 
+                      x: { grid: { display: false }, ticks: { color: textColor } },
+                      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: textColor } } 
+                    }
                   }}
                 />
-              ) : <p style={{ opacity: 0.5, textAlign: 'center', padding: '20px' }}>{t('dashboard.noData')}</p>}
+              ) : <p style={{ opacity: 0.3, textAlign: 'center', padding: '40px' }}>{t('dashboard.noData')}</p>}
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              <div>
-                <h3 style={{ fontSize: '0.9rem', color: '#f87171', marginBottom: 12 }}>{t('dashboard.expensiveAirports')}</h3>
-                {Object.keys(airportData || {}).length > 0 ? Object.entries(airportData)
-                  .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
-                  .sort((a, b) => b.fee - a.fee)
-                  .slice(0, 5)
-                  .map(a => (
-                    <div key={a.icao} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span>{a.icao}</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
-                    </div>
-                  )) : <p style={{ opacity: 0.3, fontSize: '0.8rem' }}>—</p>}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
+                <h3 style={{ fontSize: '0.9rem', opacity: 0.6 }}>{t('dashboard.expensiveAirports')}</h3>
+                <span style={{ fontSize: '0.7rem', opacity: 0.4 }}>Sortiert nach Gesamtkosten</span>
               </div>
-              <div>
-                <h3 style={{ fontSize: '0.9rem', color: '#4ade80', marginBottom: 12 }}>{t('dashboard.cheapestAirports')}</h3>
-                {Object.keys(airportData || {}).length > 0 ? Object.entries(airportData)
-                  .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
-                  .sort((a, b) => a.fee - b.fee)
-                  .slice(0, 5)
-                  .map(a => (
-                    <div key={a.icao} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <span>{a.icao}</span>
-                      <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
-                    </div>
-                  )) : <p style={{ opacity: 0.3, fontSize: '0.8rem' }}>—</p>}
+              
+              <div className="custom-table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', opacity: 0.5 }}>
+                      <th style={{ padding: '8px 0' }}>ICAO</th>
+                      <th style={{ padding: '8px 0', textAlign: 'right' }}>{t('dashboard.totalPaid') || 'Gesamt'}</th>
+                      <th style={{ padding: '8px 0', textAlign: 'right' }}>{t('dashboard.avgFee') || '∅'}</th>
+                      <th style={{ padding: '8px 0', textAlign: 'right' }}>{t('dashboard.currentFee') || 'Aktuell'}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {airportData?.summary?.length > 0 ? airportData.summary.map(a => (
+                      <tr key={a.icao} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '10px 0', fontWeight: 700 }}>{a.icao}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', color: '#38bdf8', fontWeight: 600 }}>{formatCurrency(a.total)}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', opacity: 0.6 }}>{formatCurrency(a.avg)}</td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(a.latest)}</td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan="4" style={{ padding: '40px', textAlign: 'center', opacity: 0.3 }}>—</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1413,7 +1428,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.2</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.3</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
