@@ -114,6 +114,20 @@ func processNewInvoice(filePath string) {
 		uniqueInvoiceNumber = fmt.Sprintf("%s-%s", invoice.InvoiceNumber, fileHash[:8])
 	}
 
+	// Reset existing links for this invoice to prevent double-counting costs
+	_, err = db.DB.Exec(`
+		UPDATE flights SET 
+			cost = cost - (flight_cost + landing_fee + approach_fee + fuel_cost),
+			flight_cost = 0,
+			landing_fee = 0,
+			approach_fee = 0,
+			fuel_cost = 0,
+			invoice_id = NULL
+		WHERE invoice_id IN (SELECT id FROM invoices WHERE invoice_number = ?)`, uniqueInvoiceNumber)
+	if err != nil {
+		log.Printf("[Watcher] Hinweis: Keine alten Verknüpfungen zum Zurücksetzen gefunden oder Fehler: %v", err)
+	}
+
 	absPath, _ := filepath.Abs(filePath)
 	res, err := db.DB.Exec(`
         INSERT INTO invoices (invoice_number, date, amount, aircraft, file_path, file_hash) 
@@ -126,21 +140,14 @@ func processNewInvoice(filePath string) {
 		return
 	}
 
-	var invoiceID int64
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected > 0 {
-		invoiceID, _ = res.LastInsertId()
-		db.Log(fmt.Sprintf("[Watcher] Rechnung %s neu angelegt (ID: %d).", uniqueInvoiceNumber, invoiceID), false)
-	} else {
-		db.DB.Get(&invoiceID, "SELECT id FROM invoices WHERE invoice_number = ?", uniqueInvoiceNumber)
-		db.Log(fmt.Sprintf("[Watcher] Rechnung %s existiert bereits (ID: %d).", uniqueInvoiceNumber, invoiceID), true)
-	}
+	var invoiceDBID int64
+	db.DB.Get(&invoiceDBID, "SELECT id FROM invoices WHERE invoice_number = ?", uniqueInvoiceNumber)
 
 	// 4. Matching der Einzelposten gegen bestehende Flüge
 	matches := 0
 	matchedFlightIDs := make(map[int]bool)
 	for _, item := range invoice.LineItems {
-		if flightID, err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item, int(invoiceID), matchedFlightIDs); err == nil {
+		if flightID, err := MatchInvoiceToFlight(item.Date, item.AircraftRegistration, item, int(invoiceDBID), matchedFlightIDs); err == nil {
 			matches++
 			matchedFlightIDs[flightID] = true
 		}
@@ -168,19 +175,25 @@ func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineIt
 	}
 
 	var flightID int
+	// Try to match by minutes if available to distinguish multiple flights on the same day
+	orderBy := "id ASC"
+	if item.Minutes > 0 {
+		orderBy = fmt.Sprintf("ABS(block_minutes - %d) ASC, id ASC", item.Minutes)
+	}
+
 	// Suche Flug am selben Tag mit selbem Kennzeichen, der noch keine Rechnung hat ODER schon diese Rechnung hat
 	query := fmt.Sprintf(`
 		SELECT id FROM flights 
 		WHERE date = ? AND aircraft = ? AND (invoice_id IS NULL OR invoice_id = ?) %s
-		ORDER BY id ASC
+		ORDER BY %s
 		LIMIT 1
-	`, excludeClause)
+	`, excludeClause, orderBy)
 
 	err := db.DB.Get(&flightID, query, dbDate, aircraft, invoiceID)
 
 	if err != nil {
 		if err != sql.ErrNoRows {
-			db.Log(fmt.Sprintf("[Matcher] KEIN passender Flug für %s am %s gefunden.", aircraft, dbDate), true)
+			log.Printf("[Matcher] SQL Fehler beim Matching: %v", err)
 		}
 		return 0, err
 	}

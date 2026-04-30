@@ -1,10 +1,19 @@
 # Aerobudget Release Notes
 
-## [1.5.5] - 2026-04-30
+## [1.5.8] - 2026-04-30
 ### Fixed
-- **Airfield Stats**: Fixed an issue where airfield costs included total flight costs instead of just landing and approach fees.
-- **UI Refinement**: Removed the trend chart as requested; expanded the airfield table to full width for better readability.
-- **Version Bump**: Official release of v1.5.6.
+- **Critical PDF Parser Fix**: Replaced the error-prone "Strategy B" guessing logic with a robust, two-pass parsing system.
+    - **Header Detection**: The parser now scans for keyword-based headers (Charter, Landing, ACG) to determine column positions.
+    - **Strict Keyword Matching**: Fees are only assigned if explicitly matched by a club-defined keyword or a detected column.
+    - **Defaulting**: All unmatched prices on a flight line are now correctly assigned to "Flight Cost" instead of misclassifying them as fees.
+- **Invoice Link & Cost Stability**: 
+    - **Automatic Reset**: Re-processing or re-importing an invoice now automatically clears and subtracts previous costs from linked flights before re-matching. This prevents the "inflated/wild costs" bug.
+    - **Unique Identification**: Re-enforced the use of `FileHash + Number` for strict invoice tracking.
+- **Matching Accuracy**: Added **Flight Duration (Minutes)** as a tie-breaker when matching PDF line items to logbook flights. This ensures the correct flight is picked on days with multiple entries for the same aircraft.
+
+## [1.5.7] - 2026-04-30
+### Fixed
+- **Version Bump**: Official release of v1.5.7.
 
 ## [1.5.5] - 2026-04-30
 ### Fixed

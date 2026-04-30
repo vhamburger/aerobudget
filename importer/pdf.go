@@ -115,7 +115,36 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 	// Extraction
 	itemDateRe := regexp.MustCompile(`(\d{2}[./]\d{2}[./]\d{4})`)
 	amountsRe := regexp.MustCompile(`([\d,.]+,\d{2}|[\d,.]+\.\d{2})`)
-	
+	// 1. Column Detection (Header Scan)
+	type colDef struct {
+		name string
+		pos  int
+	}
+	var columns []colDef
+	if activeClub != nil {
+		for _, line := range lines {
+			lLow := strings.ToLower(line)
+			// We look for a line that contains at least one of the keywords
+			found := false
+			if activeClub.FlightAmountKeyword != "" && strings.Contains(lLow, strings.ToLower(activeClub.FlightAmountKeyword)) {
+				columns = append(columns, colDef{"flight", strings.Index(lLow, strings.ToLower(activeClub.FlightAmountKeyword))})
+				found = true
+			}
+			if activeClub.LandingFeeKeyword != "" && strings.Contains(lLow, strings.ToLower(activeClub.LandingFeeKeyword)) {
+				columns = append(columns, colDef{"landing", strings.Index(lLow, strings.ToLower(activeClub.LandingFeeKeyword))})
+				found = true
+			}
+			if activeClub.ApproachFeeKeyword != "" && strings.Contains(lLow, strings.ToLower(activeClub.ApproachFeeKeyword)) {
+				columns = append(columns, colDef{"approach", strings.Index(lLow, strings.ToLower(activeClub.ApproachFeeKeyword))})
+				found = true
+			}
+			if found && len(columns) >= 1 {
+				db.Log(fmt.Sprintf("[Parser] Spalten-Header erkannt: %v", columns), false)
+				break
+			}
+		}
+	}
+
 	var lastItem *PDFLineItem
 
 	for _, line := range lines {
@@ -124,99 +153,130 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 		dateMatch := itemDateRe.FindString(line)
 
 		if regMatch != "" && dateMatch != "" {
-			// Classification
-			hasLandingKw := activeClub != nil && activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword))
-			hasApproachKw := activeClub != nil && activeClub.ApproachFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.ApproachFeeKeyword))
-			hasFlightKw := activeClub != nil && activeClub.FlightAmountKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.FlightAmountKeyword))
-
-			// 1. Standalone Fee detection (HB style): Has fee keyword but no flight keyword
-			if (hasLandingKw || hasApproachKw) && !hasFlightKw {
-				if lastItem != nil && (lastItem.Date == dateMatch || dateMatch == "") && lastItem.AircraftRegistration == regMatch {
-					matches := amountsRe.FindAllStringSubmatch(line, -1)
-					if len(matches) > 0 {
-						price := ParseAmount(matches[len(matches)-1][1], "")
-						if hasLandingKw {
-							lastItem.LandingFee += price
-							lastItem.Amount += price
-							log.Printf("[Parser] ADD Landegebühr: %.2f (Gesamt: %.2f)", price, lastItem.Amount)
-						} else if hasApproachKw {
-							lastItem.ApproachFee += price
-							lastItem.Amount += price
-							log.Printf("[Parser] ADD Anfluggebühr: %.2f (Gesamt: %.2f)", price, lastItem.Amount)
-						}
-					}
-					continue
-				}
-			}
-
-			// 2. New Flight or Combined Row
 			item := &PDFLineItem{
 				Date:                 dateMatch,
 				AircraftRegistration: regMatch,
 			}
-			
-			matches := amountsRe.FindAllStringSubmatch(line, -1)
-			var prices []float64
-			for _, m := range matches {
-				prices = append(prices, ParseAmount(m[1], ""))
+
+			// Find all prices and their positions in the line
+			priceMatches := amountsRe.FindAllStringIndex(line, -1)
+			type priceInfo struct {
+				val float64
+				pos int
+				claimed bool
+			}
+			var prices []priceInfo
+			for _, m := range priceMatches {
+				prices = append(prices, priceInfo{
+					val: ParseAmount(line[m[0]:m[1]], ""),
+					pos: m[0],
+				})
 			}
 
-			// Strategy A: Keyword-based (Stricter)
-			foundViaKeyword := false
-			if hasFlightKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d,.]+)`)
-				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.FlightCost = ParseAmount(m[1], "")
-					foundViaKeyword = true
-				}
-			}
-			if hasLandingKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d,.]+)`)
-				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.LandingFee = ParseAmount(m[1], "")
-					foundViaKeyword = true
-				}
-			}
-			if hasApproachKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d,.]+)`)
-				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.ApproachFee = ParseAmount(m[1], "")
-					foundViaKeyword = true
+			// Strategy 1: Column-based (if header was found)
+			if len(columns) > 0 {
+				for i := range prices {
+					for _, col := range columns {
+						// Tolerance of +/- 15 characters for column alignment
+						if prices[i].pos >= col.pos-15 && prices[i].pos <= col.pos+15 {
+							switch col.name {
+							case "flight": item.FlightCost = prices[i].val
+							case "landing": item.LandingFee = prices[i].val
+							case "approach": item.ApproachFee = prices[i].val
+							}
+							prices[i].claimed = true
+						}
+					}
 				}
 			}
 
-			// Strategy B: Table-based / Fallback
-			if !foundViaKeyword && len(prices) > 0 {
-				if len(prices) >= 3 {
-					// Assume columns: [Flight, Landing, Approach, ...]
-					item.FlightCost = prices[0]
-					item.LandingFee = prices[1]
-					item.ApproachFee = prices[2]
-				} else {
-					// Single price on line with reg/date: Usually the rental/flight cost
-					item.FlightCost = prices[len(prices)-1]
+			// Strategy 2: Keyword-based on same line (if not claimed yet)
+			if activeClub != nil {
+				keywords := []struct {
+					name string
+					kw   string
+				}{
+					{"flight", activeClub.FlightAmountKeyword},
+					{"landing", activeClub.LandingFeeKeyword},
+					{"approach", activeClub.ApproachFeeKeyword},
+				}
+
+				for _, kw := range keywords {
+					if kw.kw == "" { continue }
+					kwPos := strings.Index(lineLower, strings.ToLower(kw.kw))
+					if kwPos != -1 {
+						// Find the closest UNCLAIMED price after this keyword
+						bestIdx := -1
+						minDist := 9999
+						for i := range prices {
+							if prices[i].claimed { continue }
+							dist := prices[i].pos - kwPos
+							if dist > 0 && dist < minDist {
+								minDist = dist
+								bestIdx = i
+							}
+						}
+						if bestIdx != -1 {
+							switch kw.name {
+							case "flight": item.FlightCost = prices[bestIdx].val
+							case "landing": item.LandingFee = prices[bestIdx].val
+							case "approach": item.ApproachFee = prices[bestIdx].val
+							}
+							prices[bestIdx].claimed = true
+						}
+					}
+				}
+			}
+
+			// Strategy 3: Defaulting (Everything unclaimed goes to FlightCost)
+			for i := range prices {
+				if !prices[i].claimed {
+					// If we already have a flight cost, we add to it (e.g. multi-part flight costs)
+					item.FlightCost += prices[i].val
+					prices[i].claimed = true
+				}
+			}
+
+			// 4. Try to extract minutes (Duration)
+			durationRe := regexp.MustCompile(`(\d+)h\s*(\d+)m|(\d+)[:.](\d+)\s*h?`)
+			if m := durationRe.FindStringSubmatch(line); len(m) > 0 {
+				if m[1] != "" {
+					h, _ := strconv.Atoi(m[1])
+					mi, _ := strconv.Atoi(m[2])
+					item.Minutes = h*60 + mi
+				} else if m[3] != "" {
+					h, _ := strconv.Atoi(m[3])
+					mi, _ := strconv.Atoi(m[4])
+					// Handle both 1:30 and 1.5 format
+					if strings.Contains(m[0], ":") {
+						item.Minutes = h*60 + mi
+					} else {
+						// It's likely decimal hours (1.25)
+						f, _ := strconv.ParseFloat(m[3]+"."+m[4], 64)
+						item.Minutes = int(f * 60)
+					}
 				}
 			}
 
 			item.Amount = item.FlightCost + item.LandingFee + item.ApproachFee
 			inv.LineItems = append(inv.LineItems, item)
 			lastItem = item
-			log.Printf("[Parser] NEUER Flug: %s %s | Kosten: %.2f, Ldg: %.2f, ACG: %.2f | Gesamt: %.2f", 
-				item.AircraftRegistration, item.Date, item.FlightCost, item.LandingFee, item.ApproachFee, item.Amount)
+			db.Log(fmt.Sprintf("[Parser] NEUER Flug: %s %s | %.2f € | Min: %d", 
+				item.AircraftRegistration, item.Date, item.Amount, item.Minutes), false)
 
 		} else if lastItem != nil && activeClub != nil {
-			// Follow-up logic for HB fees (no date/reg on line)
-			matches := amountsRe.FindAllStringSubmatch(line, -1)
-			if len(matches) > 0 {
-				price := ParseAmount(matches[len(matches)-1][1], "")
+			// Follow-up logic (e.g. fees on the next line)
+			priceMatches := amountsRe.FindAllStringSubmatch(line, -1)
+			if len(priceMatches) > 0 {
+				price := ParseAmount(priceMatches[len(priceMatches)-1][1], "")
 				if activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword)) {
 					lastItem.LandingFee += price
 					lastItem.Amount += price
-					log.Printf("[Parser] ADD Folgezeile Ldg: %.2f", price)
+					db.Log(fmt.Sprintf("[Parser] ADD Folgezeile Ldg: %.2f", price), false)
 				} else if activeClub.ApproachFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.ApproachFeeKeyword)) {
 					lastItem.ApproachFee += price
 					lastItem.Amount += price
-					log.Printf("[Parser] ADD Folgezeile ACG: %.2f", price)
+					db.Log(fmt.Sprintf("[Parser] ADD Folgezeile ACG: %.2f", price), false)
 				}
 			}
 		}
