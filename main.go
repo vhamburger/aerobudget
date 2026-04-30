@@ -21,7 +21,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const VERSION = "1.5.5"
+const VERSION = "1.5.6"
 
 func main() {
 	log.Printf("=========================================")
@@ -329,7 +329,10 @@ func main() {
 		}
 		var summary []AirportSummary
 		db.DB.Select(&summary, `
-			SELECT arrival as icao, SUM(landing_fee) as total, AVG(landing_fee) as avg, MAX(landing_fee) as latest
+			SELECT arrival as icao, 
+			       SUM(landing_fee + approach_fee) as total, 
+			       AVG(NULLIF(landing_fee + approach_fee, 0)) as avg, 
+			       MAX(landing_fee + approach_fee) as latest
 			FROM flights
 			WHERE arrival != '' AND (landing_fee > 0 OR approach_fee > 0)
 			GROUP BY arrival

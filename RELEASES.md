@@ -2,6 +2,12 @@
 
 ## [1.5.5] - 2026-04-30
 ### Fixed
+- **Airfield Stats**: Fixed an issue where airfield costs included total flight costs instead of just landing and approach fees.
+- **UI Refinement**: Removed the trend chart as requested; expanded the airfield table to full width for better readability.
+- **Version Bump**: Official release of v1.5.6.
+
+## [1.5.5] - 2026-04-30
+### Fixed
 - **Critical UI Fix**: Fixed a crash caused by missing icon imports (`Map`, `Info`).
 - **Version Bump**: Official release of v1.5.5.
 

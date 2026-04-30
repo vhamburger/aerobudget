@@ -247,46 +247,7 @@ function Dashboard({ stats, flights, theme, airportData }) {
             <Map size={20} style={{ color: '#38bdf8' }} /> {t('dashboard.airfieldInsights')}
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px', marginTop: 12 }}>
-            <div>
-              <h3 style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 16 }}>{t('dashboard.landingFeeTrend')}</h3>
-              {Object.keys(airportData?.trends || {}).length > 0 ? (
-                <Line
-                  data={{
-                    labels: [...new Set(Object.values(airportData?.trends || {}).flat().map(d => d.year))].sort(),
-                    datasets: Object.entries(airportData?.trends || {}).slice(0, 5).map(([icao, data]) => {
-                      const years = [...new Set(Object.values(airportData?.trends || {}).flat().map(d => d.year))].sort();
-                      const values = years.map(y => {
-                        const match = data.find(d => d.year === y);
-                        if (match) return match.landing_fee;
-                        const lastKnown = [...data].reverse().find(d => d.year < y);
-                        return lastKnown ? lastKnown.landing_fee : (data[0]?.landing_fee || 0);
-                      });
-                      return {
-                        label: icao,
-                        data: values,
-                        borderColor: getColor(icao),
-                        tension: 0.3,
-                        pointRadius: 4,
-                        borderWidth: 2
-                      };
-                    })
-                  }}
-                  options={{
-                    responsive: true,
-                    plugins: { 
-                      legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, color: textColor } } 
-                    },
-                    scales: { 
-                      x: { grid: { display: false }, ticks: { color: textColor } },
-                      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: textColor } } 
-                    }
-                  }}
-                />
-              ) : <p style={{ opacity: 0.3, textAlign: 'center', padding: '40px' }}>{t('dashboard.noData')}</p>}
-            </div>
-            
-            <div>
+          <div style={{ marginTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 }}>
                 <h3 style={{ fontSize: '0.9rem', opacity: 0.6 }}>{t('dashboard.expensiveAirports')}</h3>
                 <span style={{ fontSize: '0.7rem', opacity: 0.4 }}>Sortiert nach Gesamtkosten</span>
@@ -1428,7 +1389,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.5</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.6</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
