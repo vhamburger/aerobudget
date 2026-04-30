@@ -1,5 +1,12 @@
 # Aerobudget Release Notes
 
+## [1.5.1] - 2026-04-30
+### Fixed
+- **FlightTable Crash**: Fixed a runtime error caused by uninitialized edit states in the flight list.
+- **Missing Translations**: Restored and localized missing strings for Import, Forecast, and Settings views.
+- **Dashboard Robustness**: Added safety checks for Airfield Insights to prevent rendering issues when data is sparse.
+- **UI Consistency**: Ensured version string and labels are consistent across all views.
+
 ## [1.5.0] - 2026-04-30
 ### Added
 - **Manual Cost Overrides**: Users can now manually edit flight, fuel, and landing fees. Manually adjusted entries are protected with a lock (🔒) and excluded from automated overrides.
