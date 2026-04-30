@@ -1,5 +1,18 @@
 # Aerobudget Release Notes
 
+## [1.5.0] - 2026-04-30
+### Added
+- **Manual Cost Overrides**: Users can now manually edit flight, fuel, and landing fees. Manually adjusted entries are protected with a lock (🔒) and excluded from automated overrides.
+- **Fuel Receipt Parsing (Dry Rental)**: New automated parser for fuel receipts (e.g., PETROL/LJPZ). Added a "Dry Rental" toggle in Club settings to support multi-invoice cost aggregation.
+- **Airfield Insights**: New dashboard section featuring landing fee trends over time and a breakdown of most/least expensive airports visited.
+- **Historical Tracking**: Automated database of historical airfield fees to track pricing evolution across years.
+- **Enhanced UI Localization**: Fully localized Login and Password Change dialogs for both German and English.
+
+### Fixed
+- **Docker Architecture**: Corrected build process to target `linux/amd64` for better compatibility.
+- **Type Safety**: Fixed backend type mismatches during flight data retrieval.
+
+
 ## [1.4.0] - 2026-04-29
 ### Added
 - **Internationalization (i18n)**: Support for German and English (UI and data).
