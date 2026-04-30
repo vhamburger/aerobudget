@@ -26,6 +26,7 @@ type PDFLineItem struct {
 	Minutes              int
 	Amount               float64 // Total
 	FlightCost           float64
+	FuelCost             float64
 	LandingFee           float64
 	ApproachFee          float64
 }
@@ -108,7 +109,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 	// Total Amount
 	amountRe := regexp.MustCompile(`(?i)(?:Gesamtbetrag|Summe|Total|Endbetrag)[\s:]*([\d,.]+)\s*(?:€|EUR)`)
 	if match := amountRe.FindStringSubmatch(text); len(match) > 1 {
-		inv.TotalAmount = parseAmount(match[1], "") // Detect automatically if possible
+		inv.TotalAmount = ParseAmount(match[1], "") // Detect automatically if possible
 	}
 
 	// Extraction
@@ -133,7 +134,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 				if lastItem != nil && (lastItem.Date == dateMatch || dateMatch == "") && lastItem.AircraftRegistration == regMatch {
 					matches := amountsRe.FindAllStringSubmatch(line, -1)
 					if len(matches) > 0 {
-						price := parseAmount(matches[len(matches)-1][1], "")
+						price := ParseAmount(matches[len(matches)-1][1], "")
 						if hasLandingKw {
 							lastItem.LandingFee += price
 							lastItem.Amount += price
@@ -157,26 +158,26 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 			matches := amountsRe.FindAllStringSubmatch(line, -1)
 			var prices []float64
 			for _, m := range matches {
-				prices = append(prices, parseAmount(m[1], ""))
+				prices = append(prices, ParseAmount(m[1], ""))
 			}
 
 			// Strategy A: Keyword-based (Stricter)
 			if hasFlightKw {
 				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d.]+,\d{2})`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.FlightCost = parseAmount(m[1], "")
+					item.FlightCost = ParseAmount(m[1], "")
 				}
 			}
 			if hasLandingKw {
 				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d.]+,\d{2})`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.LandingFee = parseAmount(m[1], "")
+					item.LandingFee = ParseAmount(m[1], "")
 				}
 			}
 			if hasApproachKw {
 				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d.]+,\d{2})`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
-					item.ApproachFee = parseAmount(m[1], "")
+					item.ApproachFee = ParseAmount(m[1], "")
 				}
 			}
 
@@ -202,7 +203,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 			// Follow-up logic for HB fees
 			matches := amountsRe.FindAllStringSubmatch(line, -1)
 			if len(matches) > 0 {
-				price := parseAmount(matches[len(matches)-1][1], "")
+				price := ParseAmount(matches[len(matches)-1][1], "")
 				if activeClub.LandingFeeKeyword != "" && strings.Contains(lineLower, strings.ToLower(activeClub.LandingFeeKeyword)) {
 					lastItem.LandingFee += price
 					lastItem.Amount += price
@@ -219,7 +220,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 	return inv, nil
 }
 
-func parseAmount(s string, locale string) float64 {
+func ParseAmount(s string, locale string) float64 {
 	// If locale is empty, try to guess
 	// If it contains a comma and then two digits at the end, it's likely German format (1.234,56)
 	// If it contains a dot and then two digits at the end, it's likely English format (1,234.56)

@@ -14,11 +14,13 @@ type Flight struct {
 	FlightRule    string    `json:"flight_rule" db:"flight_rule"`
 	Pilot         string    `json:"pilot" db:"pilot"`
 	Cost          float64   `json:"cost" db:"cost"`
-	FlightCost    float64   `json:"flight_cost" db:"flight_cost"`
-	LandingFee    float64   `json:"landing_fee" db:"landing_fee"`
+	FlightCost     float64   `json:"flight_cost" db:"flight_cost"`
+	FuelCost       float64   `json:"fuel_cost" db:"fuel_cost"`
+	LandingFee     float64   `json:"landing_fee" db:"landing_fee"`
 	ApproachFee   float64   `json:"approach_fee" db:"approach_fee"`
-	InvoiceID     *int      `json:"invoice_id" db:"invoice_id"`
-	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	InvoiceID      *int      `json:"invoice_id" db:"invoice_id"`
+	ManualOverride bool      `json:"manual_override" db:"manual_override"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 }
 
 type Invoice struct {
@@ -41,6 +43,7 @@ type Club struct {
 	ApproachFeeKeyword  string `json:"approach_fee_keyword" db:"approach_fee_keyword"`
 	InvoiceNumberKeyword string `json:"invoice_number_keyword" db:"invoice_number_keyword"`
 	InvoiceNumberNumericOnly bool `json:"invoice_number_numeric_only" db:"invoice_number_numeric_only"`
+	IsDry               bool   `json:"is_dry" db:"is_dry"`
 }
 
 type User struct {
@@ -75,4 +78,11 @@ type CSVTemplate struct {
 	TrainingTypeCol  int    `json:"training_type_col" db:"training_type_col"`
 	FlightRuleCol    int    `json:"flight_rule_col" db:"flight_rule_col"`
 	IsDefault        bool   `json:"is_default" db:"is_default"`
+}
+
+type AirfieldFee struct {
+	ICAO        string  `json:"icao" db:"icao"`
+	Year        int     `json:"year" db:"year"`
+	LandingFee  float64 `json:"landing_fee" db:"landing_fee"`
+	ApproachFee float64 `json:"approach_fee" db:"approach_fee"`
 }

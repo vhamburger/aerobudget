@@ -11,9 +11,11 @@ CREATE TABLE IF NOT EXISTS flights (
     pilot TEXT,
     cost REAL DEFAULT 0.0,
     flight_cost REAL DEFAULT 0.0,
+    fuel_cost REAL DEFAULT 0.0,
     landing_fee REAL DEFAULT 0.0,
     approach_fee REAL DEFAULT 0.0,
     invoice_id INTEGER DEFAULT NULL,
+    manual_override INTEGER DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,7 +39,8 @@ CREATE TABLE IF NOT EXISTS clubs (
     landing_fee_keyword TEXT DEFAULT '',
     approach_fee_keyword TEXT DEFAULT '',
     invoice_number_keyword TEXT DEFAULT '',
-    invoice_number_numeric_only INTEGER DEFAULT 0
+    invoice_number_numeric_only INTEGER DEFAULT 0,
+    is_dry INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS trainings (
@@ -77,6 +80,14 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT DEFAULT 'admin',
     requires_password_change INTEGER DEFAULT 0,
     locale TEXT DEFAULT 'de'
+);
+
+CREATE TABLE IF NOT EXISTS airfield_fees (
+    icao TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    landing_fee REAL DEFAULT 0.0,
+    approach_fee REAL DEFAULT 0.0,
+    PRIMARY KEY (icao, year)
 );
 
 -- Column migrations for existing databases

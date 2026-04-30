@@ -57,6 +57,10 @@ func InitDB(dbPath string) error {
 		`ALTER TABLE invoices ADD COLUMN file_hash TEXT DEFAULT ''`,
 		`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password_hash TEXT, role TEXT, requires_password_change INTEGER, locale TEXT DEFAULT 'de')`,
 		`ALTER TABLE users ADD COLUMN locale TEXT DEFAULT 'de'`,
+		`ALTER TABLE flights ADD COLUMN manual_override INTEGER DEFAULT 0`,
+		`ALTER TABLE clubs ADD COLUMN is_dry INTEGER DEFAULT 0`,
+		`CREATE TABLE IF NOT EXISTS airfield_fees (icao TEXT NOT NULL, year INTEGER NOT NULL, landing_fee REAL DEFAULT 0.0, approach_fee REAL DEFAULT 0.0, PRIMARY KEY (icao, year))`,
+		`ALTER TABLE flights ADD COLUMN fuel_cost REAL DEFAULT 0.0`,
 	}
 	migrationCount := 0
 	for _, m := range migrations {

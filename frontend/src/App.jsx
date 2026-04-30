@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from './i18n';
-import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders, LogOut, Globe } from 'lucide-react';
+import { Plane, BarChart3, TrendingUp, Settings, Upload, Clock, Euro, Activity, Trash2, Database, Building2, RefreshCcw, FileText, Sun, Moon, GraduationCap, FileSpreadsheet, Edit2, Star, Search, X, Sliders, LogOut, Globe, Lock } from 'lucide-react';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement, Filler } from 'chart.js';
 import { Line, Doughnut, Bar, Pie } from 'react-chartjs-2';
 import logo from './assets/AeroBudget-transparent-logo.png';
@@ -60,6 +60,7 @@ function LoginView({ onLogin }) {
 }
 
 function ChangePasswordDialog({ onComplete, onCancel }) {
+  const { t } = useTranslation();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -67,7 +68,7 @@ function ChangePasswordDialog({ onComplete, onCancel }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setError('Passwörter stimmen nicht überein');
+      setError(t('changePassword.errorMatch'));
       return;
     }
     const token = localStorage.getItem('token');
@@ -87,21 +88,21 @@ function ChangePasswordDialog({ onComplete, onCancel }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' }}>
       <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
-        <h2 style={{ marginBottom: '16px' }}>Passwort ändern</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Wähle ein neues, sicheres Passwort für deinen Zugang.</p>
+        <h2 style={{ marginBottom: '16px' }}>{t('changePassword.title')}</h2>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>{t('changePassword.subtitle')}</p>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>Neues Passwort</label>
+            <label style={{ display: 'block', marginBottom: '8px' }}>{t('changePassword.newPassword')}</label>
             <input type="password" className="input-field" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
           </div>
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>Passwort bestätigen</label>
+            <label style={{ display: 'block', marginBottom: '8px' }}>{t('changePassword.confirmPassword')}</label>
             <input type="password" className="input-field" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
           </div>
           {error && <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>}
           <div style={{ display: 'flex', gap: 12 }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Speichern</button>
-            {onCancel && <button type="button" onClick={onCancel} className="nav-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }}>Abbrechen</button>}
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{t('changePassword.submit')}</button>
+            {onCancel && <button type="button" onClick={onCancel} className="nav-btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)' }}>{t('changePassword.cancel')}</button>}
           </div>
         </form>
       </div>
@@ -150,7 +151,7 @@ function getColor(str) {
   return palette[idx];
 }
 
-function Dashboard({ stats, flights, theme }) {
+function Dashboard({ stats, flights, theme, airportData }) {
   const { t } = useTranslation();
   const [showAllMonths, setShowAllMonths] = useState(false);
   const textColor = theme === 'dark' ? '#f8fafc' : '#0f172a';
@@ -238,6 +239,80 @@ function Dashboard({ stats, flights, theme }) {
               }
             }}
           />
+        </div>
+
+        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
+          <h2>{t('dashboard.airfieldInsights')}</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div>
+              <h3 style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 16 }}>{t('dashboard.landingFeeTrend')}</h3>
+              {Object.keys(airportData).length > 0 ? (
+                <Line
+                  data={{
+                    labels: [...new Set(Object.values(airportData).flat().map(d => d.year))].sort(),
+                    datasets: Object.entries(airportData).slice(0, 5).map(([icao, data]) => {
+                      const years = [...new Set(Object.values(airportData).flat().map(d => d.year))].sort();
+                      // Logic: carry forward/backward for missing years
+                      const values = years.map(y => {
+                        const match = data.find(d => d.year === y);
+                        if (match) return match.landing_fee;
+                        // Forward carry
+                        const lastKnown = [...data].reverse().find(d => d.year < y);
+                        if (lastKnown) return lastKnown.landing_fee;
+                        // Backward carry
+                        const firstKnown = data.find(d => d.year > y);
+                        if (firstKnown) return firstKnown.landing_fee;
+                        return 0;
+                      });
+                      return {
+                        label: icao,
+                        data: values,
+                        borderColor: getColor(icao),
+                        tension: 0.3
+                      };
+                    })
+                  }}
+                  options={{
+                    plugins: { 
+                      legend: { position: 'right', labels: { color: textColor } }
+                    },
+                    scales: {
+                      y: { ticks: { color: textColor, callback: (v) => `${v} €` } },
+                      x: { ticks: { color: textColor } }
+                    }
+                  }}
+                />
+              ) : <p style={{ opacity: 0.5 }}>{t('dashboard.noData')}</p>}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <h3 style={{ fontSize: '0.9rem', color: '#f87171', marginBottom: 12 }}>{t('dashboard.expensiveAirports')}</h3>
+                {Object.entries(airportData)
+                  .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
+                  .sort((a, b) => b.fee - a.fee)
+                  .slice(0, 5)
+                  .map(a => (
+                    <div key={a.icao} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span>{a.icao}</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
+                    </div>
+                  ))}
+              </div>
+              <div>
+                <h3 style={{ fontSize: '0.9rem', color: '#4ade80', marginBottom: 12 }}>{t('dashboard.cheapestAirports')}</h3>
+                {Object.entries(airportData)
+                  .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
+                  .sort((a, b) => a.fee - b.fee)
+                  .slice(0, 5)
+                  .map(a => (
+                    <div key={a.icao} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <span>{a.icao}</span>
+                      <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
@@ -437,6 +512,46 @@ function FlightTable({ flights, authFetch }) {
           </tbody>
         </table>
       </div>
+
+      {editingFlight && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(5px)' }}>
+          <div className="glass-panel" style={{ width: '400px', padding: '32px' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 24 }}>{t('flights.editModal.title')}</h3>
+            <p style={{ opacity: 0.6, fontSize: '0.8rem', marginBottom: 24 }}>{editingFlight.aircraft} | {formatDate(editingFlight.date)}</p>
+            
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', opacity: 0.7 }}>{t('flights.editModal.flightCost')}</label>
+                <input type="number" step="0.01" value={editForm.flight_cost} onChange={e => setEditForm({...editForm, flight_cost: parseFloat(e.target.value) || 0})} className="input-field" style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', opacity: 0.7 }}>{t('flights.editModal.fuelCost')}</label>
+                <input type="number" step="0.01" value={editForm.fuel_cost} onChange={e => setEditForm({...editForm, fuel_cost: parseFloat(e.target.value) || 0})} className="input-field" style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', opacity: 0.7 }}>{t('flights.editModal.landingFee')}</label>
+                <input type="number" step="0.01" value={editForm.landing_fee} onChange={e => setEditForm({...editForm, landing_fee: parseFloat(e.target.value) || 0})} className="input-field" style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.8rem', opacity: 0.7 }}>{t('flights.editModal.approachFee')}</label>
+                <input type="number" step="0.01" value={editForm.approach_fee} onChange={e => setEditForm({...editForm, approach_fee: parseFloat(e.target.value) || 0})} className="input-field" style={{ width: '100%' }} />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 32, padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.9rem', opacity: 0.7 }}>{t('flights.editModal.total')}:</span>
+              <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8' }}>
+                {formatCurrency((parseFloat(editForm.flight_cost) || 0) + (parseFloat(editForm.fuel_cost) || 0) + (parseFloat(editForm.landing_fee) || 0) + (parseFloat(editForm.approach_fee) || 0))}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
+              <button onClick={handleSaveCosts} className="nav-btn" style={{ flex: 1, background: '#38bdf8', color: 'white' }}>{t('flights.editModal.save')}</button>
+              <button onClick={() => setEditingFlight(null)} className="nav-btn" style={{ flex: 1 }}>{t('flights.cancel') || 'Abbrechen'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -538,7 +653,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState('data');
   const [clubs, setClubs] = useState([]);
-  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
+  const [newClub, setNewClub] = useState({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false, is_dry: false });
   const [editingClub, setEditingClub] = useState(null);
   const [trainings, setTrainings] = useState([]);
   const [newTraining, setNewTraining] = useState({ name: '', start_date: '', end_date: '' });
@@ -573,7 +688,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newClub)
     });
-    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false });
+    setNewClub({ name: '', search_term: '', heuristic: 'highest_value', flight_amount_keyword: '', landing_fee_keyword: '', approach_fee_keyword: '', invoice_number_keyword: '', invoice_number_numeric_only: false, is_dry: false });
     setEditingClub(null);
     refreshLocalData();
   };
@@ -712,10 +827,14 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
                 </div>
               </div>
 
-              <div style={{ gridColumn: '1 / -1', marginTop: '-4px', marginBottom: '12px' }}>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '24px', marginTop: '-4px', marginBottom: '12px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', opacity: 0.7, cursor: 'pointer' }}>
                   <input type="checkbox" checked={newClub.invoice_number_numeric_only} onChange={e => setNewClub({...newClub, invoice_number_numeric_only: e.target.checked})} style={{ marginRight: 8 }} />
                   Rechnungsnummer besteht nur aus Zahlen (ignoriert Sonderzeichen wie #)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', opacity: 0.7, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={newClub.is_dry} onChange={e => setNewClub({...newClub, is_dry: e.target.checked})} style={{ marginRight: 8 }} />
+                  <strong>{t('settings.dryRental')}</strong> ({t('settings.dryRentalDesc')})
                 </label>
               </div>
 
@@ -747,7 +866,8 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
                     <td style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                       {c.flight_amount_keyword && `Flug: "${c.flight_amount_keyword}" `}
                       {c.landing_fee_keyword && `Ldg: "${c.landing_fee_keyword}" `}
-                      {c.approach_fee_keyword && `ACG: "${c.approach_fee_keyword}"`}
+                      {c.approach_fee_keyword && `ACG: "${c.approach_fee_keyword}" `}
+                      {c.is_dry && <span style={{ color: '#fbbf24', fontWeight: 600 }}>[DRY]</span>}
                     </td>
                     <td style={{ padding: '12px', textAlign: 'right', verticalAlign: 'middle' }}>
                       <button onClick={() => { setEditingClub(c); setNewClub(c); }} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', marginRight: 8 }}><Edit2 size={16} /></button>
@@ -996,6 +1116,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats, setStats] = useState(null);
   const [flights, setFlights] = useState([]);
+  const [airportData, setAirportData] = useState({});
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
@@ -1061,14 +1182,17 @@ function App() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sRes, fRes] = await Promise.all([
+      const [sRes, fRes, aRes] = await Promise.all([
         authFetch(`${API}/api/stats`),
-        authFetch(`${API}/api/flights`)
+        authFetch(`${API}/api/flights`),
+        authFetch(`${API}/api/stats/airports`)
       ]);
       const s = await sRes.json();
       const f = await fRes.json();
+      const a = await aRes.json();
       setStats(s);
       setFlights(f);
+      setAirportData(a);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
@@ -1249,7 +1373,7 @@ function App() {
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="nav-btn"
-          title="Thema wechseln"
+          title={t('nav.toggleTheme')}
           style={{ padding: '8px' }}
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -1259,11 +1383,11 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.4.0</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.0</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>
-        {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} />}
+        {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} airportData={airportData} />}
         {activeTab === 'flights' && <FlightTable flights={flights} authFetch={authFetch} />}
         {activeTab === 'forecast' && <ForecastView authFetch={authFetch} />}
         {activeTab === 'import' && <ImportView onImported={loadData} authFetch={authFetch} />}

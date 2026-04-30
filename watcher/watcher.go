@@ -76,11 +76,28 @@ func processNewInvoice(filePath string) {
 		return
 	}
 
-	// 2. Parser mit den Kennzeichen und Vereinen aufrufen
 	invoice, err := importer.ParseInvoiceText(text, knownAircraft, clubs, filepath.Base(filePath))
 	if err != nil {
 		log.Printf("[Watcher] Fehler beim Parsen: %v", err)
 		return
+	}
+
+	// 2.5 Falls keine LineItems gefunden wurden, probiere Sprit-Parser
+	if len(invoice.LineItems) == 0 {
+		fuel := importer.ParseFuelReceipt(text)
+		if fuel != nil {
+			db.Log(fmt.Sprintf("[Watcher] Sprit-Beleg erkannt: %s am %s", fuel.Aircraft, fuel.Date), false)
+			invoice.Date = fuel.Date
+			invoice.TotalAmount = fuel.TotalAmount
+			invoice.LineItems = []*importer.PDFLineItem{
+				{
+					AircraftRegistration: fuel.Aircraft,
+					Date:                 fuel.Date,
+					Amount:               fuel.TotalAmount,
+					FuelCost:             fuel.TotalAmount,
+				},
+			}
+		}
 	}
 
 	// Bestimme ein Haupt-Kennzeichen für die Rechnungstabelle
@@ -167,8 +184,8 @@ func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineIt
 		return 0, err
 	}
 
-	_, err = db.DB.Exec(`UPDATE flights SET cost = ?, flight_cost = ?, landing_fee = ?, approach_fee = ?, invoice_id = ? WHERE id = ?`, 
-		item.Amount, item.FlightCost, item.LandingFee, item.ApproachFee, invoiceID, flightID)
+	_, err = db.DB.Exec(`UPDATE flights SET cost = cost + ?, flight_cost = flight_cost + ?, fuel_cost = fuel_cost + ?, landing_fee = landing_fee + ?, approach_fee = approach_fee + ?, invoice_id = ? WHERE id = ?`, 
+		item.Amount, item.FlightCost, item.FuelCost, item.LandingFee, item.ApproachFee, invoiceID, flightID)
 	if err != nil {
 		return 0, err
 	}

@@ -21,11 +21,11 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const AppVersion = "1.4.0"
+const VERSION = "1.5.0"
 
 func main() {
 	log.Printf("=========================================")
-	log.Printf("   Aerobudget Starting (v%s)", AppVersion)
+	log.Printf("   Aerobudget Starting (v%s)", VERSION)
 	log.Printf("=========================================")
 	
 	dbPath := os.Getenv("DB_PATH")
@@ -144,11 +144,13 @@ func main() {
 			Pilot         string  `db:"pilot" json:"pilot"`
 			Cost          float64 `db:"cost" json:"cost"`
 			FlightCost    float64 `db:"flight_cost" json:"flight_cost"`
+			FuelCost      float64 `db:"fuel_cost" json:"fuel_cost"`
 			LandingFee    float64 `db:"landing_fee" json:"landing_fee"`
 			ApproachFee   float64 `db:"approach_fee" json:"approach_fee"`
 			InvoiceID     *int    `db:"invoice_id" json:"invoice_id"`
+			ManualOverride bool    `db:"manual_override" json:"manual_override"`
 		}
-		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot, cost, flight_cost, landing_fee, approach_fee, invoice_id FROM flights ORDER BY date DESC`)
+		err := db.DB.Select(&flights, `SELECT id, date, aircraft, departure, arrival, block_minutes, flight_minutes, training_type, flight_rule, pilot, cost, flight_cost, fuel_cost, landing_fee, approach_fee, invoice_id, manual_override FROM flights ORDER BY date DESC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -190,6 +192,39 @@ func main() {
 		}
 		query, args, _ := sqlx.In(`DELETE FROM flights WHERE id IN (?)`, req.IDs)
 		db.DB.Exec(db.DB.Rebind(query), args...)
+		w.WriteHeader(200)
+	})
+
+	r.Put("/api/flights/{id}/costs", func(w http.ResponseWriter, r *http.Request) {
+		id := chi.URLParam(r, "id")
+		var req struct {
+			FlightCost  float64 `json:"flight_cost"`
+			FuelCost    float64 `json:"fuel_cost"`
+			LandingFee  float64 `json:"landing_fee"`
+			ApproachFee float64 `json:"approach_fee"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Ungültige Anfrage", 400)
+			return
+		}
+
+		totalCost := req.FlightCost + req.FuelCost + req.LandingFee + req.ApproachFee
+		_, err := db.DB.Exec(`UPDATE flights SET flight_cost = ?, fuel_cost = ?, landing_fee = ?, approach_fee = ?, cost = ?, manual_override = 1 WHERE id = ?`,
+			req.FlightCost, req.FuelCost, req.LandingFee, req.ApproachFee, totalCost, id)
+		
+		if err == nil {
+			var f models.Flight
+			db.DB.Get(&f, "SELECT * FROM flights WHERE id = ?", id)
+			if f.Arrival != "" && (req.LandingFee > 0 || req.ApproachFee > 0) {
+				year, _ := strconv.Atoi(f.Date[:4])
+				// Update or insert airfield fees for historical tracking
+				db.DB.Exec(`INSERT INTO airfield_fees (icao, year, landing_fee, approach_fee) VALUES (?, ?, ?, ?)
+					ON CONFLICT(icao, year) DO UPDATE SET 
+					landing_fee = CASE WHEN EXCLUDED.landing_fee > 0 THEN EXCLUDED.landing_fee ELSE airfield_fees.landing_fee END,
+					approach_fee = CASE WHEN EXCLUDED.approach_fee > 0 THEN EXCLUDED.approach_fee ELSE airfield_fees.approach_fee END`,
+					f.Arrival, year, req.LandingFee, req.ApproachFee)
+			}
+		}
 		w.WriteHeader(200)
 	})
 
@@ -275,12 +310,31 @@ func main() {
 		json.NewEncoder(w).Encode(stats)
 	})
 
+	r.Get("/api/stats/airports", func(w http.ResponseWriter, r *http.Request) {
+		type AirportYearly struct {
+			ICAO       string  `db:"icao" json:"icao"`
+			Year       int     `db:"year" json:"year"`
+			LandingFee float64 `db:"landing_fee" json:"landing_fee"`
+		}
+		var data []AirportYearly
+		db.DB.Select(&data, `SELECT icao, year, landing_fee FROM airfield_fees ORDER BY icao, year ASC`)
+
+		// Organize by ICAO
+		result := make(map[string][]AirportYearly)
+		for _, d := range data {
+			result[d.ICAO] = append(result[d.ICAO], d)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	})
+
 
 
 	// --- CLUBS API ---
 	r.Get("/api/clubs", func(w http.ResponseWriter, r *http.Request) {
 		var clubs []models.Club
-		err := db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only FROM clubs ORDER BY name ASC`)
+		err := db.DB.Select(&clubs, `SELECT id, name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only, is_dry FROM clubs ORDER BY name ASC`)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -296,8 +350,8 @@ func main() {
 			http.Error(w, "Invalid club data", 400)
 			return
 		}
-		_, err := db.DB.Exec(`INSERT INTO clubs (name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
-			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly)
+		_, err := db.DB.Exec(`INSERT INTO clubs (name, search_term, heuristic, flight_amount_keyword, landing_fee_keyword, approach_fee_keyword, invoice_number_keyword, invoice_number_numeric_only, is_dry) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly, club.IsDry)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
@@ -312,8 +366,8 @@ func main() {
 			http.Error(w, "Invalid club data", 400)
 			return
 		}
-		_, err := db.DB.Exec(`UPDATE clubs SET name = ?, search_term = ?, heuristic = ?, flight_amount_keyword = ?, landing_fee_keyword = ?, approach_fee_keyword = ?, invoice_number_keyword = ?, invoice_number_numeric_only = ? WHERE id = ?`, 
-			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly, id)
+		_, err := db.DB.Exec(`UPDATE clubs SET name = ?, search_term = ?, heuristic = ?, flight_amount_keyword = ?, landing_fee_keyword = ?, approach_fee_keyword = ?, invoice_number_keyword = ?, invoice_number_numeric_only = ?, is_dry = ? WHERE id = ?`, 
+			club.Name, club.SearchTerm, club.Heuristic, club.FlightAmountKeyword, club.LandingFeeKeyword, club.ApproachFeeKeyword, club.InvoiceNumberKeyword, club.InvoiceNumberNumericOnly, club.IsDry, id)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 			return
