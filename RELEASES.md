@@ -1,5 +1,12 @@
 # Aerobudget Release Notes
 
+## [1.5.2] - 2026-04-30
+### Fixed
+- **Airfield Insights**: Fixed a bug where airfield fees were not saved during the automated reconcile process.
+- **Forecast Correction**: Fixed the SQL query for aircraft rates to correctly fetch the latest data, ensuring accurate cost estimates.
+- **Internationalization**: Switched currency to £ (GBP) and adjusted number formatting for English (UK) locale.
+- **Version Bump**: Official release of v1.5.2.
+
 ## [1.5.1] - 2026-04-30
 ### Fixed
 - **FlightTable Crash**: Fixed a runtime error caused by uninitialized edit states in the flight list.

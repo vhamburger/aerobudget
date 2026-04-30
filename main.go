@@ -21,7 +21,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-const VERSION = "1.5.1"
+const VERSION = "1.5.2"
 
 func main() {
 	log.Printf("=========================================")
@@ -597,9 +597,12 @@ func main() {
 		query := `
 			SELECT aircraft, flight_cost, block_minutes, landing_fee, approach_fee
 			FROM flights
-			WHERE invoice_id IS NOT NULL AND block_minutes > 0
-			GROUP BY aircraft
-			HAVING MAX(date)
+			WHERE id IN (
+				SELECT id FROM flights f2 
+				WHERE f2.invoice_id IS NOT NULL AND f2.block_minutes > 0 AND f2.flight_cost > 0
+				GROUP BY f2.aircraft 
+				HAVING MAX(f2.date)
+			)
 		`
 		rows, err := db.DB.Query(query)
 		if err != nil {

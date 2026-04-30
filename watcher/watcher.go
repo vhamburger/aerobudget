@@ -191,6 +191,21 @@ func MatchInvoiceToFlight(date string, aircraft string, item *importer.PDFLineIt
 	}
 
 	db.Log(fmt.Sprintf("[Matcher] Flug %d (%s, %s) erfolgreich mit Rechnung %d verknüpft.", flightID, aircraft, dbDate, invoiceID), false)
+
+	// Update airfield fees for historical tracking
+	if item.LandingFee > 0 || item.ApproachFee > 0 {
+		var f models.Flight
+		db.DB.Get(&f, "SELECT * FROM flights WHERE id = ?", flightID)
+		if f.Arrival != "" {
+			year, _ := strconv.Atoi(dbDate[:4])
+			db.DB.Exec(`INSERT INTO airfield_fees (icao, year, landing_fee, approach_fee) VALUES (?, ?, ?, ?)
+				ON CONFLICT(icao, year) DO UPDATE SET 
+				landing_fee = CASE WHEN EXCLUDED.landing_fee > 0 THEN EXCLUDED.landing_fee ELSE airfield_fees.landing_fee END,
+				approach_fee = CASE WHEN EXCLUDED.approach_fee > 0 THEN EXCLUDED.approach_fee ELSE airfield_fees.approach_fee END`,
+				f.Arrival, year, item.LandingFee, item.ApproachFee)
+		}
+	}
+
 	return flightID, nil
 }
 
