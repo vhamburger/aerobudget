@@ -1,9 +1,13 @@
 # Aerobudget Release Notes
 
+## [1.5.5] - 2026-04-30
+### Fixed
+- **Critical UI Fix**: Fixed a crash caused by missing icon imports (`Map`, `Info`).
+- **Version Bump**: Official release of v1.5.5.
+
 ## [1.5.4] - 2026-04-30
 ### Fixed
-- **UI Crash Fix**: Resolved a critical issue where the dashboard failed to load due to unsafe data access in the Airfield Insights component.
-- **Version Bump**: Official release of v1.5.4.
+- **UI Crash Fix**: Resolved a critical issue where the dashboard failed to load due to unsafe data access in the Airfield 
 
 ## [1.5.3] - 2026-04-30
 ### Fixed
@@ -16,7 +20,6 @@
 - **Airfield Insights**: Fixed a bug where airfield fees were not saved during the automated reconcile process.
 - **Forecast Correction**: Fixed the SQL query for aircraft rates to correctly fetch the latest data, ensuring accurate cost estimates.
 - **Internationalization**: Switched currency to £ (GBP) and adjusted number formatting for English (UK) locale.
-- **Version Bump**: Official release of v1.5.2.
 
 ## [1.5.1] - 2026-04-30
 ### Fixed
@@ -78,7 +81,7 @@
 ## [1.2.1] - 2026-04-28 (Internal/Fix)
 ### Fixed
 - **DB Migration**: Added `file_path` column to existing databases automatically.
-- **Version String**: Fixed frontend showing v1.1.0 instead of v1.2.3.
+- **Version String**: Fixed frontend showing v1.2. instead of v1.2.3.
 
 ## [1.2.0] - 2026-04-28
 ### Added
