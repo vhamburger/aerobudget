@@ -129,7 +129,7 @@ func processNewInvoice(filePath string) {
 	}
 
 	absPath, _ := filepath.Abs(filePath)
-	res, err := db.DB.Exec(`
+	_, err = db.DB.Exec(`
         INSERT INTO invoices (invoice_number, date, amount, aircraft, file_path, file_hash) 
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(invoice_number) DO UPDATE SET file_path = excluded.file_path, file_hash = excluded.file_hash`,
