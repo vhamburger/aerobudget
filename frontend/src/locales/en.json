@@ -96,5 +96,24 @@
     "delete": "Delete",
     "dryRental": "Dry Rental",
     "dryRentalDesc": "Fuel is billed separately"
+  },
+  "import": {
+    "csv": "Logbook Import (CSV)",
+    "dropFiles": "Drop your CSV file here or click to select",
+    "selectCSV": "Select CSV file",
+    "uploading": "Uploading...",
+    "selectTemplate": "Import Profile"
+  },
+  "forecast": {
+    "title": "Cost Forecast",
+    "subtitle": "Plan your next flights and estimate costs.",
+    "aircraft": "Select Aircraft",
+    "plannedTime": "Planned Block Time (Min.)",
+    "persons": "Persons (Split)",
+    "basisRate": "Base Rate (last invoice)",
+    "additionalCosts": "Additional Costs (estimated home base)",
+    "expectedCosts": "EXPECTED COSTS",
+    "perPerson": "per person",
+    "disclaimer": "* Estimate based on the last invoice for {{aircraft}}. Excluding landing and approach fees at destination."
   }
 }

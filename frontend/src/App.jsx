@@ -584,6 +584,7 @@ function FlightTable({ flights, authFetch, loadData }) {
 }
 
 function ForecastView({ authFetch }) {
+  const { t } = useTranslation();
   const [rates, setRates] = useState([]);
   const [selectedAircraft, setSelectedAircraft] = useState('');
   const [minutes, setMinutes] = useState(60);
@@ -601,26 +602,26 @@ function ForecastView({ authFetch }) {
     <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 350px' }}>
       <div className="glass-panel">
         <h2 style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <TrendingUp size={24} style={{ color: '#38bdf8' }} /> Flugkosten Forecast
+          <TrendingUp size={24} style={{ color: '#38bdf8' }} /> {t('forecast.title')}
         </h2>
         
         <div style={{ display: 'grid', gap: '24px' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Flugzeug auswählen</label>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('forecast.aircraft')}</label>
             <select 
               className="input-field" 
               style={{ width: '100%', fontSize: '1.1rem' }}
               value={selectedAircraft}
               onChange={e => setSelectedAircraft(e.target.value)}
             >
-              <option value="">Bitte wählen...</option>
+              <option value="">{t('flights.search')}</option>
               {rates.map(r => <option key={r.aircraft} value={r.aircraft}>{r.aircraft}</option>)}
             </select>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Geplante Blockzeit (Min.)</label>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('forecast.plannedTime')}</label>
               <input 
                 type="number" 
                 value={minutes} 
@@ -630,7 +631,7 @@ function ForecastView({ authFetch }) {
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Personen (Split)</label>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{t('forecast.persons')}</label>
               <input 
                 type="number" 
                 min="1"
@@ -645,11 +646,11 @@ function ForecastView({ authFetch }) {
           {rate && (
             <div style={{ marginTop: 12, padding: '20px', background: 'rgba(56,189,248,0.05)', borderRadius: '12px', border: '1px solid rgba(56,189,248,0.1)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ opacity: 0.6 }}>Basis-Rate (letzte Rechnung):</span>
+                <span style={{ opacity: 0.6 }}>{t('forecast.basisRate')}:</span>
                 <span style={{ fontWeight: 600 }}>{formatCurrency(rate.rate_per_min * 60)} / h</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', opacity: 0.5 }}>
-                <span>Zusatzkosten (Schätzwert Heimatplatz):</span>
+                <span>{t('forecast.additionalCosts')}:</span>
                 <span>Ldg: {formatCurrency(rate.landing_fee)} | ACG: {formatCurrency(rate.approach_fee)}</span>
               </div>
             </div>
@@ -658,18 +659,17 @@ function ForecastView({ authFetch }) {
       </div>
 
       <div className="glass-panel" style={{ background: 'rgba(56,189,248,0.1)', border: '1px solid rgba(56,189,248,0.2)', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
-        <p style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 8 }}>VORAUSSICHTLICHE KOSTEN</p>
+        <p style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 8 }}>{t('forecast.expectedCosts')}</p>
         <div style={{ fontSize: '3rem', fontWeight: 800, color: '#38bdf8', marginBottom: 4 }}>
           {formatCurrency(totalFlight)}
         </div>
         {persons > 1 && (
           <div style={{ fontSize: '1.2rem', opacity: 0.8, color: '#4ade80' }}>
-            {formatCurrency(perPerson)} <span style={{ fontSize: '0.9rem' }}>pro Person</span>
+            {formatCurrency(perPerson)} <span style={{ fontSize: '0.9rem' }}>{t('forecast.perPerson')}</span>
           </div>
         )}
         <p style={{ marginTop: 24, fontSize: '0.7rem', opacity: 0.4, fontStyle: 'italic' }}>
-          * Schätzung basierend auf der letzten Rechnung für {selectedAircraft || '---'}. <br/>
-          Exklusive Lande- und Anfluggebühren am Zielplatz.
+          {t('forecast.disclaimer', { aircraft: selectedAircraft || '---' })}
         </p>
       </div>
     </div>

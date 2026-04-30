@@ -96,5 +96,24 @@
     "delete": "Löschen",
     "dryRental": "Dry Rental",
     "dryRentalDesc": "Sprit wird separat abgerechnet"
+  },
+  "import": {
+    "csv": "Logbuch Import (CSV)",
+    "dropFiles": "Ziehe deine CSV Datei hierher oder klicke zum Auswählen",
+    "selectCSV": "CSV Datei auswählen",
+    "uploading": "Hochladen...",
+    "selectTemplate": "Import Profil"
+  },
+  "forecast": {
+    "title": "Kosten Forecast",
+    "subtitle": "Plane deine nächsten Flüge und schätze die Kosten.",
+    "aircraft": "Flugzeug wählen",
+    "plannedTime": "Geplante Blockzeit (Min.)",
+    "persons": "Personen (Split)",
+    "basisRate": "Basis-Rate (letzte Rechnung)",
+    "additionalCosts": "Zusatzkosten (Schätzwert Heimatplatz)",
+    "expectedCosts": "VORAUSSICHTLICHE KOSTEN",
+    "perPerson": "pro Person",
+    "disclaimer": "* Schätzung basierend auf der letzten Rechnung für {{aircraft}}. Exklusive Lande- und Anfluggebühren am Zielplatz."
   }
 }
