@@ -2,7 +2,6 @@ package importer
 
 import (
 	"regexp"
-	"strings"
 )
 
 type FuelReceipt struct {
