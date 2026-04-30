@@ -3,7 +3,6 @@ package importer
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os/exec"
 	"regexp"
 	"strconv"
