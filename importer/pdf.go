@@ -162,33 +162,38 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 			}
 
 			// Strategy A: Keyword-based (Stricter)
+			foundViaKeyword := false
 			if hasFlightKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d.]+,\d{2})`)
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.FlightAmountKeyword) + `[\s:]*([\d,.]+)`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
 					item.FlightCost = ParseAmount(m[1], "")
+					foundViaKeyword = true
 				}
 			}
 			if hasLandingKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d.]+,\d{2})`)
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.LandingFeeKeyword) + `[\s:]*([\d,.]+)`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
 					item.LandingFee = ParseAmount(m[1], "")
+					foundViaKeyword = true
 				}
 			}
 			if hasApproachKw {
-				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d.]+,\d{2})`)
+				re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(activeClub.ApproachFeeKeyword) + `[\s:]*([\d,.]+)`)
 				if m := re.FindStringSubmatch(line); len(m) > 1 {
 					item.ApproachFee = ParseAmount(m[1], "")
+					foundViaKeyword = true
 				}
 			}
 
-			// Strategy B: Table-based (Fly Linz)
-			if item.FlightCost == 0 && len(prices) > 0 {
+			// Strategy B: Table-based / Fallback
+			if !foundViaKeyword && len(prices) > 0 {
 				if len(prices) >= 3 {
 					// Assume columns: [Flight, Landing, Approach, ...]
 					item.FlightCost = prices[0]
-					if item.LandingFee == 0 && len(prices) > 1 { item.LandingFee = prices[1] }
-					if item.ApproachFee == 0 && len(prices) > 2 { item.ApproachFee = prices[2] }
+					item.LandingFee = prices[1]
+					item.ApproachFee = prices[2]
 				} else {
+					// Single price on line with reg/date: Usually the rental/flight cost
 					item.FlightCost = prices[len(prices)-1]
 				}
 			}
@@ -200,7 +205,7 @@ func ParseInvoiceText(text string, knownAircraft []string, clubs []models.Club, 
 				item.AircraftRegistration, item.Date, item.FlightCost, item.LandingFee, item.ApproachFee, item.Amount)
 
 		} else if lastItem != nil && activeClub != nil {
-			// Follow-up logic for HB fees
+			// Follow-up logic for HB fees (no date/reg on line)
 			matches := amountsRe.FindAllStringSubmatch(line, -1)
 			if len(matches) > 0 {
 				price := ParseAmount(matches[len(matches)-1][1], "")
