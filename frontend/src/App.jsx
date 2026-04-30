@@ -239,30 +239,22 @@ function Dashboard({ stats, flights, theme, airportData }) {
               }
             }}
           />
-        </div>
-
-        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
+        </div>        <div className="glass-panel" style={{ gridColumn: '1 / -1' }}>
           <h2>{t('dashboard.airfieldInsights')}</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
             <div>
               <h3 style={{ fontSize: '0.9rem', opacity: 0.6, marginBottom: 16 }}>{t('dashboard.landingFeeTrend')}</h3>
-              {Object.keys(airportData).length > 0 ? (
+              {Object.keys(airportData || {}).length > 0 ? (
                 <Line
                   data={{
                     labels: [...new Set(Object.values(airportData).flat().map(d => d.year))].sort(),
                     datasets: Object.entries(airportData).slice(0, 5).map(([icao, data]) => {
                       const years = [...new Set(Object.values(airportData).flat().map(d => d.year))].sort();
-                      // Logic: carry forward/backward for missing years
                       const values = years.map(y => {
                         const match = data.find(d => d.year === y);
                         if (match) return match.landing_fee;
-                        // Forward carry
                         const lastKnown = [...data].reverse().find(d => d.year < y);
-                        if (lastKnown) return lastKnown.landing_fee;
-                        // Backward carry
-                        const firstKnown = data.find(d => d.year > y);
-                        if (firstKnown) return firstKnown.landing_fee;
-                        return 0;
+                        return lastKnown ? lastKnown.landing_fee : (data[0]?.landing_fee || 0);
                       });
                       return {
                         label: icao,
@@ -273,21 +265,18 @@ function Dashboard({ stats, flights, theme, airportData }) {
                     })
                   }}
                   options={{
-                    plugins: { 
-                      legend: { position: 'right', labels: { color: textColor } }
-                    },
-                    scales: {
-                      y: { ticks: { color: textColor, callback: (v) => `${v} €` } },
-                      x: { ticks: { color: textColor } }
-                    }
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10, color: textColor } } },
+                    scales: { x: { ticks: { color: textColor } }, y: { ticks: { color: textColor } } }
                   }}
                 />
-              ) : <p style={{ opacity: 0.5 }}>{t('dashboard.noData')}</p>}
+              ) : <p style={{ opacity: 0.5, textAlign: 'center', padding: '20px' }}>{t('dashboard.noData')}</p>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               <div>
                 <h3 style={{ fontSize: '0.9rem', color: '#f87171', marginBottom: 12 }}>{t('dashboard.expensiveAirports')}</h3>
-                {Object.entries(airportData)
+                {Object.keys(airportData || {}).length > 0 ? Object.entries(airportData)
                   .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
                   .sort((a, b) => b.fee - a.fee)
                   .slice(0, 5)
@@ -296,11 +285,11 @@ function Dashboard({ stats, flights, theme, airportData }) {
                       <span>{a.icao}</span>
                       <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
                     </div>
-                  ))}
+                  )) : <p style={{ opacity: 0.3, fontSize: '0.8rem' }}>—</p>}
               </div>
               <div>
                 <h3 style={{ fontSize: '0.9rem', color: '#4ade80', marginBottom: 12 }}>{t('dashboard.cheapestAirports')}</h3>
-                {Object.entries(airportData)
+                {Object.keys(airportData || {}).length > 0 ? Object.entries(airportData)
                   .map(([icao, data]) => ({ icao, fee: data[data.length - 1].landing_fee }))
                   .sort((a, b) => a.fee - b.fee)
                   .slice(0, 5)
@@ -309,7 +298,7 @@ function Dashboard({ stats, flights, theme, airportData }) {
                       <span>{a.icao}</span>
                       <span style={{ fontWeight: 600 }}>{formatCurrency(a.fee)}</span>
                     </div>
-                  ))}
+                  )) : <p style={{ opacity: 0.3, fontSize: '0.8rem' }}>—</p>}
               </div>
             </div>
           </div>
@@ -349,11 +338,35 @@ function Dashboard({ stats, flights, theme, airportData }) {
   );
 }
 
-function FlightTable({ flights, authFetch }) {
+function FlightTable({ flights, authFetch, loadData }) {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [editingFlight, setEditingFlight] = useState(null);
+  const [editForm, setEditForm] = useState({ flight_cost: 0, fuel_cost: 0, landing_fee: 0, approach_fee: 0 });
+
+  const handleEditClick = (f) => {
+    setEditingFlight(f);
+    setEditForm({ 
+      flight_cost: f.flight_cost, 
+      fuel_cost: f.fuel_cost || 0, 
+      landing_fee: f.landing_fee, 
+      approach_fee: f.approach_fee 
+    });
+  };
+
+  const handleSaveCosts = async () => {
+    const res = await authFetch(`${API}/api/flights/${editingFlight.id}/costs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    });
+    if (res.ok) {
+      setEditingFlight(null);
+      loadData();
+    }
+  };
 
   const handleExport = async () => {
     const res = await authFetch(`${API}/api/export/flights`);
@@ -477,22 +490,14 @@ function FlightTable({ flights, authFetch }) {
                 <td style={{ padding: '12px' }}>
                   {f.cost > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <span style={{ color: '#4ade80', fontWeight: 600 }}>{formatCurrency(f.cost)}</span>
-                        {f.invoice_id && (
-                          <button 
-                            onClick={() => handleViewInvoice(f.invoice_id)} 
-                            style={{ background: 'none', border: 'none', color: 'inherit', marginLeft: 6, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                            title={t('flights.table.showInvoice')}
-                          >
-                            <FileText size={14} style={{ opacity: 0.6 }} />
-                          </button>
-                        )}
+                        {f.manual_override && <Lock size={12} style={{ opacity: 0.4 }} title={t('flights.editModal.manualIndicator')} />}
                       </div>
                       {f.flight_cost > 0 && f.flight_cost !== f.cost && <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t('flights.table.flightFee', { cost: formatCurrency(f.flight_cost) })}</span>}
                     </div>
                   ) : (
-                    <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                    <span style={{ color: '#f87171' }}>{t('flights.table.missing')}</span>
                   )}
                 </td>
                 <td style={{ padding: '12px', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
@@ -500,12 +505,34 @@ function FlightTable({ flights, authFetch }) {
                   {f.approach_fee > 0 && <div>{t('flights.table.approachFee', { cost: formatCurrency(f.approach_fee) })}</div>}
                   {!(f.landing_fee > 0 || f.approach_fee > 0) && <span style={{ opacity: 0.3 }}>—</span>}
                 </td>
+                <td style={{ padding: '12px' }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {f.invoice_id ? (
+                      <button 
+                        onClick={() => handleViewInvoice(f.invoice_id)} 
+                        className="nav-btn" 
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)' }}
+                      >
+                        PDF
+                      </button>
+                    ) : (
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>—</span>
+                    )}
+                    <button 
+                      onClick={() => handleEditClick(f)}
+                      className="nav-btn"
+                      style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'rgba(56,189,248,0.1)', color: '#38bdf8' }}
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             )) : (
               <tr>
-                <td colSpan="10" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <td colSpan="11" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                   <Search size={32} style={{ opacity: 0.1, marginBottom: 12 }} />
-                  <p>Keine Flüge gefunden</p>
+                  <p>{t('flights.noFlightsFound')}</p>
                 </td>
               </tr>
             )}
@@ -547,7 +574,7 @@ function FlightTable({ flights, authFetch }) {
 
             <div style={{ display: 'flex', gap: 12, marginTop: 32 }}>
               <button onClick={handleSaveCosts} className="nav-btn" style={{ flex: 1, background: '#38bdf8', color: 'white' }}>{t('flights.editModal.save')}</button>
-              <button onClick={() => setEditingFlight(null)} className="nav-btn" style={{ flex: 1 }}>{t('flights.cancel') || 'Abbrechen'}</button>
+              <button onClick={() => setEditingFlight(null)} className="nav-btn" style={{ flex: 1 }}>{t('flights.cancel')}</button>
             </div>
           </div>
         </div>
@@ -748,16 +775,16 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
         {subTab === 'data' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2>Flüge verwalten</h2>
+              <h2>{t('settings.dataManagement')}</h2>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={triggerReconcile} className="nav-btn" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10b981' }}>
-                  <RefreshCcw size={14} style={{ marginRight: 8 }} /> Reconcile
+                  <RefreshCcw size={14} style={{ marginRight: 8 }} /> {t('settings.reconcile')}
                 </button>
                 <button onClick={resetReconcile} className="nav-btn" style={{ background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)' }}>
-                  <Trash2 size={14} style={{ marginRight: 8 }} /> Reset Matches
+                  <Trash2 size={14} style={{ marginRight: 8 }} /> {t('settings.resetMatches')}
                 </button>
                 <button onClick={onBatchDelete} disabled={selectedIds.length === 0} className="nav-btn" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171' }}>
-                  <Trash2 size={14} style={{ marginRight: 8 }} /> Löschen ({selectedIds.length})
+                  <Trash2 size={14} style={{ marginRight: 8 }} /> {t('settings.delete')} ({selectedIds.length})
                 </button>
               </div>
             </div>
@@ -765,9 +792,9 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left' }}>
                   <th style={{ padding: '10px' }}><input type="checkbox" onChange={(e) => setSelectedIds(e.target.checked ? flights.map(f => f.id) : [])} /></th>
-                  <th style={{ padding: '10px' }}>Datum</th>
-                  <th style={{ padding: '10px' }}>Flugzeug</th>
-                  <th style={{ padding: '10px' }}>Kosten</th>
+                  <th style={{ padding: '10px' }}>{t('flights.table.date')}</th>
+                  <th style={{ padding: '10px' }}>{t('flights.table.aircraft')}</th>
+                  <th style={{ padding: '10px' }}>{t('flights.table.cost')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -776,7 +803,7 @@ function SettingsView({ flights, selectedIds, setSelectedIds, onBatchDelete, aut
                     <td style={{ padding: '10px' }}><input type="checkbox" checked={selectedIds.includes(f.id)} onChange={() => setSelectedIds(prev => prev.includes(f.id) ? prev.filter(i => i !== f.id) : [...prev, f.id])} /></td>
                     <td style={{ padding: '10px' }}>{formatDate(f.date)}</td>
                     <td style={{ padding: '10px' }}>{f.aircraft}</td>
-                    <td style={{ padding: '10px' }}>{f.cost > 0 ? `${f.cost.toFixed(2)} €` : <span style={{ color: '#f87171' }}>Fehlt</span>}</td>
+                    <td style={{ padding: '10px' }}>{f.cost > 0 ? formatCurrency(f.cost) : <span style={{ color: '#f87171' }}>{t('flights.table.missing')}</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1388,7 +1415,7 @@ function App() {
 
       <div style={{ padding: '0 24px 24px' }}>
         {activeTab === 'dashboard' && <Dashboard stats={stats} flights={flights} theme={theme} airportData={airportData} />}
-        {activeTab === 'flights' && <FlightTable flights={flights} authFetch={authFetch} />}
+        {activeTab === 'flights' && <FlightTable flights={flights} authFetch={authFetch} loadData={loadData} />}
         {activeTab === 'forecast' && <ForecastView authFetch={authFetch} />}
         {activeTab === 'import' && <ImportView onImported={loadData} authFetch={authFetch} />}
         {activeTab === 'settings' && <SettingsView flights={flights} selectedIds={selectedIds} setSelectedIds={setSelectedIds} onBatchDelete={batchDelete} authFetch={authFetch} loadData={loadData} />}

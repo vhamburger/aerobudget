@@ -9,7 +9,6 @@
 - **Enhanced UI Localization**: Fully localized Login and Password Change dialogs for both German and English.
 
 ### Fixed
-- **Docker Architecture**: Corrected build process to target `linux/amd64` for better compatibility.
 - **Type Safety**: Fixed backend type mismatches during flight data retrieval.
 
 
