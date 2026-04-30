@@ -253,9 +253,9 @@ function Dashboard({ stats, flights, theme, airportData }) {
               {Object.keys(airportData?.trends || {}).length > 0 ? (
                 <Line
                   data={{
-                    labels: [...new Set(Object.values(airportData.trends).flat().map(d => d.year))].sort(),
-                    datasets: Object.entries(airportData.trends).slice(0, 5).map(([icao, data]) => {
-                      const years = [...new Set(Object.values(airportData.trends).flat().map(d => d.year))].sort();
+                    labels: [...new Set(Object.values(airportData?.trends || {}).flat().map(d => d.year))].sort(),
+                    datasets: Object.entries(airportData?.trends || {}).slice(0, 5).map(([icao, data]) => {
+                      const years = [...new Set(Object.values(airportData?.trends || {}).flat().map(d => d.year))].sort();
                       const values = years.map(y => {
                         const match = data.find(d => d.year === y);
                         if (match) return match.landing_fee;
@@ -1428,7 +1428,7 @@ function App() {
       <header className="header" style={{ marginBottom: '32px' }}>
         <img src={logo} alt="AeroBudget Logo" style={{ height: '100px', width: 'auto' }} />
         <p style={{ color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.05em', marginBottom: 4 }}>AEROBUDGET</p>
-        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.3</p>
+        <p style={{ fontSize: '0.7rem', opacity: 0.4, marginTop: 0 }}>v1.5.4</p>
       </header>
 
       <div style={{ padding: '0 24px 24px' }}>

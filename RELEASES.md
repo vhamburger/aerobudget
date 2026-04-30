@@ -1,5 +1,10 @@
 # Aerobudget Release Notes
 
+## [1.5.4] - 2026-04-30
+### Fixed
+- **UI Crash Fix**: Resolved a critical issue where the dashboard failed to load due to unsafe data access in the Airfield Insights component.
+- **Version Bump**: Official release of v1.5.4.
+
 ## [1.5.3] - 2026-04-30
 ### Fixed
 - **Forecast selection**: Fixed a bug where aircraft dropdown was empty due to an overly strict database query.
